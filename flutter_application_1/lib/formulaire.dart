@@ -12,10 +12,31 @@ class _FormulairePageState extends State<FormulairePage> {
   final _nomController = TextEditingController();
   String _categorie = 'Faune';
 
+  String _sanitizeInput(String input) {
+    final buffer = StringBuffer();
+    final allowed = RegExp(r'[a-zA-Z0-9\s\-éèêëàâäùûüôöçœæ]');
+
+    for (final char in input.split('')) {
+      if (allowed.hasMatch(char)) {
+        buffer.write(char);
+      }
+    }
+
+    return buffer.toString();
+  }
+
   void _enregistrerObservation() {
     if (_nomController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez entrer un nom d\'espèce')),
+      );
+      return;
+    }
+    
+    // Validation supplémentaire
+    if (!_isValidInput(_nomController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Caractères non autorisés détectés')),
       );
       return;
     }
@@ -33,6 +54,13 @@ class _FormulairePageState extends State<FormulairePage> {
       MaterialPageRoute(builder: (context) => const HomePage()),
       (Route<dynamic> route) => false,
     );
+  }
+
+  bool _isValidInput(String input) {
+    // Accepte uniquement : lettres, chiffres, espaces et tirets
+    // Refuse : * / ' " ; \ & | < > = ( ) [ ] { } ~ ` @ # $ % ^ !
+    final regex = RegExp(r'^[a-zA-Z0-9\s\-éèêëàâäùûüôöçœæ]+$');
+    return regex.hasMatch(input);
   }
 
   @override
@@ -58,6 +86,16 @@ class _FormulairePageState extends State<FormulairePage> {
                 hintText: 'Ex: Sanglier, Olivier, Cigale...',
                 prefixIcon: Icon(Icons.search),
               ),
+              onChanged: (value) {
+                // Filtre en temps réel les caractères non autorisés
+                final filtered = _sanitizeInput(value);
+                if (filtered != value) {
+                  _nomController.text = filtered;
+                  _nomController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: filtered.length),
+                  );
+                }
+              },
             ),
             
             const SizedBox(height: 25),
