@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'formulaire.dart'; // Import de la page du formulaire
+import 'formulaire.dart'; 
 
 void main() {
   runApp(const AixaWildApp());
@@ -28,7 +28,6 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Barre d'application avec un style "Aix-en-Provence"
       appBar: AppBar(
         title: const Text("AixaWild", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.green[800],
@@ -37,7 +36,6 @@ class HomePage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. SECTION HEADER / STATS
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -58,10 +56,7 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // 2. BOUTONS D'ACTION RAPIDE
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -72,10 +67,7 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 30),
-
-            // 3. SECTION DERNIÈRES OBSERVATIONS
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -86,33 +78,27 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Liste fictive d'observations
             _buildObservationItem("Sanglier", "Faune", "Il y a 2h", Icons.pets),
             _buildObservationItem("Olivier", "Flore", "Hier", Icons.local_florist),
             _buildObservationItem("Cigale", "Faune", "28 Fév", Icons.bug_report),
           ],
         ),
       ),
-      
-      // LE BOUTON CENTRAL POUR RECENSER (Le coeur du CdC)
       floatingActionButton: FloatingActionButton.extended(
-  onPressed: () {
-    // Navigue vers la page du formulaire
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const FormulairePage()),
-    );
-  },
-  label: const Text("Recenser"),
-  icon: const Icon(Icons.add_a_photo),
-  backgroundColor: Colors.green[700],
-  foregroundColor: Colors.white,
-),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FormulairePage()),
+          );
+        },
+        label: const Text("Recenser"),
+        icon: const Icon(Icons.add_a_photo),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+      ),
     );
   }
 
-  // Widget réutilisable pour les petits boutons bleus/oranges
   Widget _buildQuickAction(IconData icon, String label, Color color) {
     return Expanded(
       child: Container(
@@ -133,7 +119,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Widget pour une ligne d'observation dans la liste
   Widget _buildObservationItem(String titre, String sousTitre, String date, IconData icon) {
     return ListTile(
       leading: CircleAvatar(

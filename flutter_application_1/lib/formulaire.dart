@@ -1,33 +1,16 @@
 import 'package:flutter/material.dart';
+import 'main.dart'; // Très important pour revenir au main
 
-class FormulairePage extends StatelessWidget {
+class FormulairePage extends StatefulWidget {
   const FormulairePage({super.key});
 
-
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AixaWild',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const AddObservationScreen(),
-    );
-  }
+  State<FormulairePage> createState() => _FormulairePageState();
 }
 
-class AddObservationScreen extends StatefulWidget {
-  const AddObservationScreen({super.key});
-
-  @override
-  State<AddObservationScreen> createState() => _AddObservationScreenState();
-}
-
-class _AddObservationScreenState extends State<AddObservationScreen> {
-  // Les "contrôleurs" permettent de récupérer ce que l'utilisateur écrit
+class _FormulairePageState extends State<FormulairePage> {
   final _nomController = TextEditingController();
-  String _categorie = 'Faune'; // Valeur par défaut
+  String _categorie = 'Faune';
 
   void _enregistrerObservation() {
     if (_nomController.text.isEmpty) {
@@ -36,11 +19,19 @@ class _AddObservationScreenState extends State<AddObservationScreen> {
       );
       return;
     }
-    final dateActuelle = DateTime.now(); // Capture la date et l'heure
-    print("Enregistré le : ${dateActuelle.day}/${dateActuelle.month} à ${dateActuelle.hour}:${dateActuelle.minute},Observation : ${_nomController.text} (${_categorie})");
+    
+    final dateActuelle = DateTime.now(); 
+    print("Enregistré le : ${dateActuelle.day}/${dateActuelle.month} à ${dateActuelle.hour}:${dateActuelle.minute}, Observation : ${_nomController.text} ($_categorie)");
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${_nomController.text} enregistré avec succès !')),
+    );
+    
+    // Retour immédiat à l'accueil avec la SnackBar qui reste visible
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -60,7 +51,6 @@ class _AddObservationScreenState extends State<AddObservationScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             
-            // Champ de texte pour le nom
             TextField(
               controller: _nomController,
               decoration: const InputDecoration(
@@ -73,7 +63,6 @@ class _AddObservationScreenState extends State<AddObservationScreen> {
             const SizedBox(height: 25),
             
             const Text("Catégorie :", style: TextStyle(fontSize: 16)),
-            // Menu déroulant pour la catégorie
             DropdownButton<String>(
               value: _categorie,
               isExpanded: true,
@@ -90,16 +79,13 @@ class _AddObservationScreenState extends State<AddObservationScreen> {
               },
             ),
             
-            const Spacer(), // Pousse le bouton vers le bas
+            const Spacer(),
             
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  _enregistrerObservation();
-                  Navigator.pop(context);
-                },
+                onPressed: _enregistrerObservation,
                 icon: const Icon(Icons.check),
                 label: const Text("Enregistrer l'observation"),
                 style: ElevatedButton.styleFrom(
