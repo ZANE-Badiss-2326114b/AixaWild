@@ -1,43 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'data/api/api_client.dart';
-import 'data/database/my_database.dart';
-import 'data/repositories/user_repository.dart';
+import 'pages/auth/extranet_home_page.dart';
+import 'pages/auth/login_page.dart';
+import 'pages/auth/sign_in_page.dart';
+import 'pages/intranet/accueil_page.dart';
+import 'pages/intranet/formulaire_page.dart';
+import 'shared/navigation/app_routes.dart';
 
+void main() {
+  runApp(const AixaWildApp());
+}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AixaWildApp extends StatelessWidget {
+  const AixaWildApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aixawild',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const Scaffold(
-        body: Center(child: Text("Architecture prête !")),
+      debugShowCheckedModeBanner: false,
+      title: 'AixaWild',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, primary: Colors.green[800]!),
+        useMaterial3: true,
       ),
+      initialRoute: AppRoutes.extranetHome,
+      routes: {
+        AppRoutes.intranetHome: (context) => const AccueilIntranetPage(),
+        AppRoutes.intranetFormulaire: (context) => const FormulaireIntranetPage(),
+        AppRoutes.intranetAccueil: (context) => const AccueilIntranetPage(),
+        AppRoutes.extranetHome: (context) => const HomeExtranetPage(),
+        AppRoutes.extranetLogin: (context) => const LoginExtranetPage(),
+        AppRoutes.extranetSignIn: (context) => const SignInExtranetPage(),
+      },
     );
   }
-}
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 1. Initialisation des composants de base
-  final database = MyDatabase();
-  final apiClient = ApiClient();
-  
-  // 2. Initialisation du Repository
-  final userRepository = UserRepository(apiClient, database.userDao);
-
-  runApp(
-    MultiProvider(
-      providers: [
-        // On injecte la DB au cas où on en aurait besoin ailleurs
-        Provider<MyDatabase>.value(value: database),
-        // On injecte le Repository : c'est lui que l'UI appellera
-        Provider<UserRepository>.value(value: userRepository),
-      ],
-      child: const MyApp(),
-    ),
-  );
 }

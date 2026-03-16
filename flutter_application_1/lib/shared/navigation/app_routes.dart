@@ -6,5 +6,4 @@ class AppRoutes {
   static const extranetHome = '/extranet/home';
   static const extranetLogin = '/extranet/login';
   static const extranetSignIn = '/extranet/sign-in';
-  static const extranetUsers = '/extranet/users';
 }
