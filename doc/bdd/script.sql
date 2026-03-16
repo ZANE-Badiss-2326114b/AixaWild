@@ -5,7 +5,7 @@ CREATE TABLE SubscriptionType (
 );
 
 -- 2. Table des utilisateurs
-CREATE TABLE User (
+CREATE TABLE Users (
     user_email VARCHAR(100) PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE Subscription (
     start_date DATE NOT NULL,
     end_date DATE,
     PRIMARY KEY (user_email, start_date), -- Permet plusieurs abonnements dans le temps, mais pas simultanément
-    FOREIGN KEY (user_email) REFERENCES User(user_email) ON DELETE CASCADE,
+    FOREIGN KEY (user_email) REFERENCES Users(user_email) ON DELETE CASCADE,
     FOREIGN KEY (type_name) REFERENCES SubscriptionType(type_name)
 );
 
@@ -33,7 +33,7 @@ CREATE TABLE Post (
     likes_count INT DEFAULT 0,
     reporting_count INT DEFAULT 0,
     PRIMARY KEY (author_email, created_at),
-    FOREIGN KEY (author_email) REFERENCES User(user_email) ON DELETE CASCADE
+    FOREIGN KEY (author_email) REFERENCES Users(user_email) ON DELETE CASCADE
 );
 
 -- 5. Table des médias (Plusieurs médias possibles par post)

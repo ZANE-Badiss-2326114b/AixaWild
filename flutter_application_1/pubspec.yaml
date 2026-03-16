@@ -31,7 +31,11 @@ dependencies:
 
   flutter:
     sdk: flutter
-
+  drift: ^2.14.1
+  sqlite3_flutter_libs: ^0.5.18 
+  provider: ^6.1.1
+  path_provider: ^2.1.1
+  path: ^1.8.3
   geolocator: ^9.0.2
   camera: ^0.10.0+4
   uuid: ^3.0.6
@@ -39,11 +43,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  drift_dev: ^2.14.1
+  build_runner: ^2.4.7
+  mockito: ^5.4.0
+  test: ^1.24.0
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
