@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>550</x>
+      <y>310</y>
+      <w>310</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>API (Backend)
+--
+*Technologie :*
+Java avec Spring Boot
+--
+*Rôle :*
+Validation des données, gestion
+historique, hachage mots de passe.
+--
+*Sécurité :*
+Spring Security, Authentification JWT,
+Validation des types (Robustesse).</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>40</x>
+      <y>310</y>
+      <w>310</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>Client (Local)
+--
+*Technologie :*
+ SQLite.
+--
+*Rôle :*
+Stockage local, mode hors-ligne, 
+cache des images/vidéos.
+--
+*Sécurité :*
+Chiffrement du fichier local (SQLCipher) 
+et stockage du Token JWT.</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>550</x>
+      <y>580</y>
+      <w>310</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>Database (Server)
+--
+*Technologie :*
+MySQL
+--
+*Rôle :*
+Stockage permanent, intégrité
+référentielle, gestion gros volumes.
+--
+*Structure :*
+Clés primaires composées (Email + Date)
+pour l'historique d'abonnement.</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>340</x>
+      <y>370</y>
+      <w>230</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-&gt;
+HTTPS / JSON
+Retrofit/HttpClient 
+Token JWT</panel_attributes>
+    <additional_attributes>10.0;20.0;210.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>680</x>
+      <y>470</y>
+      <w>140</w>
+      <h>130</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-&gt;
+JDBC / SQL
+Spring Data JPA
+Requêtes SQL</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;110.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>620</x>
+      <y>10</y>
+      <w>250</w>
+      <h>170</h>
+    </coordinates>
+    <panel_attributes>Cloud Storage (AWS S3)
+--
+*Technologie :*
+Object Storage (Bucket S3)
+--
+*Rôle :*
+Hébergement des fichiers
+médias (Images/Vidéos).
+--
+*Sécurité :*
+IAM Roles / Access Keys
+(Privé &amp; Sécurisé).</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>690</x>
+      <y>170</y>
+      <w>210</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-&gt;
+AWS SDK for Java
+HTTPS (Transfert binaire)
+S3Client (v2)</panel_attributes>
+    <additional_attributes>10.0;140.0;10.0;10.0</additional_attributes>
+  </element>
+</diagram>
