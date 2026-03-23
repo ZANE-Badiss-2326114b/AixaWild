@@ -16,11 +16,7 @@ class SignInExtranetPage extends StatefulWidget {
 }
 
 class _SignInExtranetPageState extends State<SignInExtranetPage> {
-  static final SubscriptionType _freeType = SubscriptionType(
-    id: null,
-    name: 'Free',
-    description: 'Aucun abonnement',
-  );
+  static final SubscriptionType _freeType = SubscriptionType(id: null, name: 'Free', description: 'Aucun abonnement');
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -68,20 +64,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              _buildNameField(),
-              const SizedBox(height: 16),
-              _buildEmailField(),
-              const SizedBox(height: 16),
-              _buildPasswordField(),
-              const SizedBox(height: 16),
-              _buildSubscriptionDropdown(options),
-              const SizedBox(height: 24),
-              _buildSubmitButton(context),
-            ],
-          ),
+          child: Column(children: [const SizedBox(height: 20), _buildNameField(), const SizedBox(height: 16), _buildEmailField(), const SizedBox(height: 16), _buildPasswordField(), const SizedBox(height: 16), _buildSubscriptionDropdown(options), const SizedBox(height: 24), _buildSubmitButton(context)]),
         );
       },
     );
@@ -90,20 +73,14 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
   Widget _buildNameField() {
     return TextField(
       controller: _nameController,
-      decoration: const InputDecoration(
-        labelText: 'Nom',
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(labelText: 'Nom', border: OutlineInputBorder()),
     );
   }
 
   Widget _buildEmailField() {
     return TextField(
       controller: _emailController,
-      decoration: const InputDecoration(
-        labelText: 'Email',
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
     );
   }
 
@@ -111,35 +88,21 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     return TextField(
       controller: _passwordController,
       obscureText: true,
-      decoration: const InputDecoration(
-        labelText: 'Mot de passe',
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(labelText: 'Mot de passe', border: OutlineInputBorder()),
     );
   }
 
   Widget _buildSubscriptionDropdown(List<SubscriptionType> options) {
     final allOptions = <SubscriptionType>[_freeType, ...options];
 
-    final selectedValue = allOptions.any((type) =>
-            type.id == _selectedType.id &&
-            type.name.trim().toLowerCase() ==
-                _selectedType.name.trim().toLowerCase())
-        ? _selectedType
-        : _freeType;
+    final selectedValue = allOptions.any((type) => type.id == _selectedType.id && type.name.trim().toLowerCase() == _selectedType.name.trim().toLowerCase()) ? _selectedType : _freeType;
 
     return DropdownButtonFormField<SubscriptionType>(
       value: selectedValue,
-      decoration: const InputDecoration(
-        labelText: 'Abonnement',
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(labelText: 'Abonnement', border: OutlineInputBorder()),
       items: allOptions.map((type) {
         final detail = type.id == null ? 'Aucun abonnement' : null;
-        return DropdownMenuItem<SubscriptionType>(
-          value: type,
-          child: Text(detail == null ? type.name : '${type.name} ($detail)'),
-        );
+        return DropdownMenuItem<SubscriptionType>(value: type, child: Text(detail == null ? type.name : '${type.name} ($detail)'));
       }).toList(),
       onChanged: (value) {
         if (value == null) return;
@@ -155,22 +118,14 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isSubmitting ? null : () => _onSignInPressed(context),
-        child: _isSubmitting
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Text('S\'inscrire'),
+        child: _isSubmitting ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('S\'inscrire'),
       ),
     );
   }
 
   Future<List<SubscriptionType>> _loadSubscriptionTypes() async {
     final remoteTypes = await _subscriptionRepository.getAvailableTypes();
-    return remoteTypes
-        .where((type) => type.name.trim().toLowerCase() != 'free')
-        .toList();
+    return remoteTypes.where((type) => type.name.trim().toLowerCase() != 'free').toList();
   }
 
   Future<void> _onSignInPressed(BuildContext context) async {
@@ -189,20 +144,14 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
 
     try {
       await _userRepository.createUser(email, name, password);
-      await _subscriptionRepository.createSubscriptionForUser(
-        userEmail: email,
-        selectedType: _selectedType,
-      );
+
+      ApiClient.setCredentials(email: email, password: password);
+
+      await _subscriptionRepository.createSubscriptionForUser(userEmail: email, selectedType: _selectedType);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.extranetLogin,
-        arguments: email,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Compte créé avec succès.')),
-      );
+      Navigator.pushReplacementNamed(context, AppRoutes.extranetLogin, arguments: email);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Compte créé avec succès.')));
     } catch (_) {
       _showMessage('Échec de l\'inscription, veuillez réessayer.');
     } finally {
@@ -215,8 +164,6 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }

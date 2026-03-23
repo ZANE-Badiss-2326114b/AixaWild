@@ -133,7 +133,10 @@ class SubscriptionRepository {
     for (final endpoint in endpoints) {
       if (types.isEmpty) {
         try {
-          final response = await _apiClient.get(endpoint);
+          final response = await _apiClient.get(
+            endpoint,
+            includeAuthorization: false,
+          );
           final parsed = _parseTypesResponse(response);
 
           if (parsed.isNotEmpty) {
@@ -151,7 +154,10 @@ class SubscriptionRepository {
     List<SubscriptionType> types;
 
     try {
-      final response = await _apiClient.get('subscriptions');
+      final response = await _apiClient.get(
+        'subscriptions',
+        includeAuthorization: false,
+      );
       final fromSubscriptions = _extractTypesFromSubscriptions(response);
       types = _deduplicateTypes(fromSubscriptions);
     } catch (_) {

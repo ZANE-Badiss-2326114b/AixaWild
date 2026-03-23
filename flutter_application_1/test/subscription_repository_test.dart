@@ -8,7 +8,10 @@ class _FakeSubscriptionApiClient extends ApiClient {
   final Map<String, dynamic> responsesByEndpoint;
 
   @override
-  Future<dynamic> get(String endpoint) async {
+  Future<dynamic> get(
+    String endpoint, {
+    bool includeAuthorization = true,
+  }) async {
     if (!responsesByEndpoint.containsKey(endpoint)) {
       throw Exception('Endpoint GET non géré en test: $endpoint');
     }

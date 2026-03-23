@@ -128,7 +128,11 @@ class UserRepository {
       'passwordHash': password, 
     };
 
-    await _apiClient.post('users', userData);
+    await _apiClient.post(
+      'users',
+      userData,
+      includeAuthorization: false,
+    );
     
     // 2. Mise à jour locale (pour que l'app soit réactive même hors-ligne)
     await _userDao.upsertUser(UsersCompanion.insert(
