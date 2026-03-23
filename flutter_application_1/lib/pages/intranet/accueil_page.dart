@@ -1,10 +1,41 @@
 import 'package:flutter/material.dart';
 
+import '../../data/api/api_client.dart';
+import '../../data/models/subscription.dart';
+import '../../data/repositories/subscription_repository.dart';
 import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_appbar.dart';
 
-class AccueilIntranetPage extends StatelessWidget {
+class AccueilIntranetPage extends StatefulWidget {
   const AccueilIntranetPage({super.key});
+
+  @override
+  State<AccueilIntranetPage> createState() => _AccueilIntranetPageState();
+}
+
+class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
+  final SubscriptionRepository _subscriptionRepository =
+      SubscriptionRepository(ApiClient());
+  
+  late Future<Subscription?> _subscriptionFuture;
+  String _userEmail = '';
+  bool _isInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInitialized) return;
+
+    final routeArgument = ModalRoute.of(context)?.settings.arguments;
+    if (routeArgument is String && routeArgument.trim().isNotEmpty) {
+      _userEmail = routeArgument.trim();
+      _subscriptionFuture = _subscriptionRepository.getCurrentByUser(_userEmail);
+    } else {
+      _subscriptionFuture = Future.value(null);
+    }
+
+    _isInitialized = true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +50,9 @@ class AccueilIntranetPage extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _buildHeader(),
+          _buildUserGreetingHeader(),
+          const SizedBox(height: 20),
+          _buildWelcomeHeader(),
           const SizedBox(height: 20),
           _buildQuickActionsRow(),
           const SizedBox(height: 30),
@@ -32,7 +65,60 @@ class AccueilIntranetPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildUserGreetingHeader() {
+    return FutureBuilder<Subscription?>(
+      future: _subscriptionFuture,
+      builder: (context, snapshot) {
+        final subscription = snapshot.data;
+        final subscriptionLabel = subscription?.currentTypeLabel ?? 'Gratuit';
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          color: Colors.blue[50],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bonjour,',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _userEmail.isEmpty ? 'Utilisateur' : _userEmail.split('@').first,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Abonnement: $subscriptionLabel',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[900],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWelcomeHeader() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
