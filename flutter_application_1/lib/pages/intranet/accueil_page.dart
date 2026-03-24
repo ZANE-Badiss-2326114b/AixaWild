@@ -10,18 +10,18 @@ class AccueilIntranetPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild'),
-      body: _buildBody(),
+      body: _buildBody(context),
       floatingActionButton: _buildFloatingActionButton(context),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
           _buildHeader(),
           const SizedBox(height: 20),
-          _buildQuickActionsRow(),
+          _buildQuickActionsRow(context),
           const SizedBox(height: 30),
           _buildDiscoveriesHeader(),
           _buildObservationItem('Sanglier', 'Faune', 'Il y a 2h', Icons.pets),
@@ -68,14 +68,19 @@ class AccueilIntranetPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionsRow() {
+  Widget _buildQuickActionsRow(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           _buildQuickAction(Icons.map, 'Carte', Colors.blue),
           const SizedBox(width: 15),
-          _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+          GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.intranetMesFiches);
+            },
+            child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+          ),
         ],
       ),
     );

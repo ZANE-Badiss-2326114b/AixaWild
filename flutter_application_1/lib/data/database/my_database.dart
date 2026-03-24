@@ -8,7 +8,7 @@ part 'my_database.g.dart';
 class MyDatabase extends _$MyDatabase {
   MyDatabase() : super(openDatabaseConnection());
   
-  MyDatabase.withExecutor(QueryExecutor e) : super(e); 
+  MyDatabase.withExecutor(super.e); 
 
   @override
   int get schemaVersion => 1;

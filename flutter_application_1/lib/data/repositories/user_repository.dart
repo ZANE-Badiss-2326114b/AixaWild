@@ -1,7 +1,6 @@
 import '../api/api_client.dart';
 import '../daos/user_dao.dart';
 import '../database/my_database.dart';
-import 'package:drift/drift.dart';
 
 class UserRepository {
   final ApiClient _apiClient;
