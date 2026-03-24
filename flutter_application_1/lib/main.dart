@@ -22,7 +22,7 @@ class AixaWildApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, primary: Colors.green[800]!),
         useMaterial3: true,
       ),
-      initialRoute: AppRoutes.extranetHome,
+      initialRoute: AppRoutes.extranetLogin,
       routes: {
         AppRoutes.intranetHome: (context) => const AccueilIntranetPage(),
         AppRoutes.intranetFormulaire: (context) => const FormulaireIntranetPage(),
