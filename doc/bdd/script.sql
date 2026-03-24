@@ -1,3 +1,20 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS Media;
+DROP TABLE IF EXISTS Subscription;
+DROP TABLE IF EXISTS Post;
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS SubscriptionType;
+
+DROP TABLE IF EXISTS media;
+DROP TABLE IF EXISTS subscription;
+DROP TABLE IF EXISTS post;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS subscriptionType;
+
+
+SET FOREIGN_KEY_CHECKS = 1;
+
 -- 1. Table des types d'abonnement (le catalogue)
 CREATE TABLE SubscriptionType (
     type_name VARCHAR(50) PRIMARY KEY,
@@ -26,22 +43,25 @@ CREATE TABLE Subscription (
 
 -- 4. Table des publications
 CREATE TABLE Post (
+    post_id INT AUTO_INCREMENT PRIMARY KEY,
     author_email VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     title VARCHAR(255) NOT NULL,
     content TEXT,
     likes_count INT DEFAULT 0,
     reporting_count INT DEFAULT 0,
-    PRIMARY KEY (author_email, created_at),
+    -- PRIMARY KEY (post_id),
     FOREIGN KEY (author_email) REFERENCES Users(user_email) ON DELETE CASCADE
 );
 
 -- 5. Table des médias (Plusieurs médias possibles par post)
 CREATE TABLE Media (
     id_media INT AUTO_INCREMENT PRIMARY KEY,
-    author_email VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP NOT NULL,
+    post_id INT NOT NULL,
     url VARCHAR(255) NOT NULL,
-    type VARCHAR(20), -- 'image' ou 'video'
-    FOREIGN KEY (author_email, created_at) REFERENCES Post(author_email, created_at) ON DELETE CASCADE
+    FOREIGN KEY (post_id) REFERENCES Post(post_id) ON DELETE CASCADE
 );
+
+INSERT INTO SubscriptionType (type_name, price) VALUES
+('Premium', 10.00),
+('Admin', 0.00);
