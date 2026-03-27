@@ -1,70 +1,67 @@
+import '../utils/json_parser.dart';
+
 class SubscriptionType {
-  final int? id;
-  final String name;
-  final String? code;
-  final String? description;
+	final int? id;
+	final String name;
+	final String? description;
+	final double? price;
 
-  SubscriptionType({
-    required this.name,
-    this.id,
-    this.code,
-    this.description,
-  });
+	SubscriptionType({
+		required this.id,
+		required this.name,
+		this.description,
+		this.price,
+	});
 
-  factory SubscriptionType.fromJson(Map<String, dynamic> json) {
-    return SubscriptionType(
-      id: _asInt(json['id'] ?? json['subscriptionTypeId']),
-      name: _asString(
-        json['label'] ?? json['subscriptionTypeLabel'] ?? json['code'] ?? json['subscriptionTypeCode'],
-      ),
-      code: _asNullableString(json['code'] ?? json['subscriptionTypeCode']),
-      description: _asNullableString(json['description'] ?? json['details']),
-    );
-  }
+	factory SubscriptionType.fromJson(Map<String, dynamic> json) {
+		int? parsedId;
+		final rawId = json['id'] ?? json['type_id'];
 
-  static int? _asInt(dynamic value) {
-    int? parsedValue;
+		if (rawId != null) {
+			if (rawId is int) {
+				parsedId = rawId;
+			} else {
+				parsedId = int.tryParse(rawId.toString());
+			}
+		} else {
+			parsedId = null;
+		}
 
-    if (value is int) {
-      parsedValue = value;
-    } else {
-      if (value is String) {
-        parsedValue = int.tryParse(value);
-      } else {
-        if (value is num) {
-          parsedValue = value.toInt();
-        } else {
-          parsedValue = null;
-        }
-      }
-    }
+		String parsedName;
+		final nameValue = json['name'] ?? json['type_name'] ?? json['label'];
+		final normalizedName = JsonParser.asString(nameValue);
+		if (normalizedName.isNotEmpty) {
+			parsedName = normalizedName;
+		} else {
+			parsedName = 'Free';
+		}
 
-    return parsedValue;
-  }
+		String? parsedDescription;
+		final descriptionValue = json['description'] ?? json['type_description'];
+		final normalizedDescription = JsonParser.asString(descriptionValue);
+		if (normalizedDescription.isNotEmpty) {
+			parsedDescription = normalizedDescription;
+		} else {
+			parsedDescription = null;
+		}
 
-  static String _asString(dynamic value) {
-    String parsedValue;
+		double? parsedPrice;
+		final priceValue = json['price'];
+		if (priceValue != null) {
+			if (priceValue is num) {
+				parsedPrice = priceValue.toDouble();
+			} else {
+				parsedPrice = double.tryParse(priceValue.toString());
+			}
+		} else {
+			parsedPrice = null;
+		}
 
-    final str = value?.toString().trim();
-    if (str?.isNotEmpty == true) {
-      parsedValue = str!;
-    } else {
-      parsedValue = 'Type inconnu';
-    }
-
-    return parsedValue;
-  }
-
-  static String? _asNullableString(dynamic value) {
-    String? parsedValue;
-
-    final normalized = value?.toString().trim();
-    if (normalized?.isNotEmpty ?? false) {
-      parsedValue = normalized;
-    } else {
-      parsedValue = null;
-    }
-
-    return parsedValue;
-  }
+		return SubscriptionType(
+			id: parsedId,
+			name: parsedName,
+			description: parsedDescription,
+			price: parsedPrice,
+		);
+	}
 }

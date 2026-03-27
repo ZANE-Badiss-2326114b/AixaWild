@@ -1,359 +1,191 @@
 import '../api/api_client.dart';
 import '../models/subscription.dart';
 import '../models/subscription_type.dart';
-
-class SubscriptionDashboardData {
-  final Subscription? currentSubscription;
-  final List<SubscriptionType> availableTypes;
-
-  SubscriptionDashboardData({
-    required this.currentSubscription,
-    required this.availableTypes,
-  });
-}
+import '../utils/api_endpoints.dart';
 
 class SubscriptionRepository {
-  final ApiClient _apiClient;
+	final ApiClient _apiClient;
 
-  SubscriptionRepository(this._apiClient);
+	SubscriptionRepository(this._apiClient);
 
-  Future<SubscriptionDashboardData> getDashboardData(String userEmail) async {
-    final current = await getCurrentByUser(userEmail);
-    final availableTypes = await getAvailableTypes();
+	Future<List<SubscriptionType>> getAvailableTypes() async {
+		List<SubscriptionType> types;
 
-    return SubscriptionDashboardData(
-      currentSubscription: current,
-      availableTypes: availableTypes,
-    );
-  }
+		try {
+			final response = await _apiClient.get(
+				ApiEndpoints.subscriptionTypes,
+				includeAuthorization: false,
+			);
+			types = _mapTypesFromResponse(response);
+		} catch (_) {
+			try {
+				final fallbackResponse = await _apiClient.get(
+					ApiEndpoints.subscriptionTypesFallback,
+					includeAuthorization: false,
+				);
+				types = _mapTypesFromResponse(fallbackResponse);
+			} catch (_) {
+				types = <SubscriptionType>[];
+			}
+		}
 
-  Future<Subscription?> getCurrentByUser(String userEmail) async {
-    final encodedEmail = Uri.encodeComponent(userEmail);
-    final endpoints = [
-      'subscriptions/user/$encodedEmail/current',
-      'subscriptions/user/$encodedEmail',
-    ];
+		return types;
+	}
 
-    Subscription? currentSubscription;
+	Future<Subscription?> getCurrentByUser(String email) async {
+		Subscription? currentSubscription;
+		final encodedEmail = Uri.encodeComponent(email);
 
-    for (final endpoint in endpoints) {
-      if (currentSubscription == null) {
-        try {
-          final dynamic response = await _apiClient.get(endpoint);
+		try {
+			final response = await _apiClient.get(
+				ApiEndpoints.currentSubscriptionByUser(encodedEmail),
+			);
 
-          if (response is Map<String, dynamic>) {
-            currentSubscription = Subscription.fromJson(response);
-          } else {
-            if (response is List) {
-              currentSubscription = _selectCurrentFromList(response);
-            } else {
-              currentSubscription = null;
-            }
-          }
-        } catch (_) {
-          currentSubscription = null;
-        }
-      }
-    }
+			if (response is Map<String, dynamic>) {
+				currentSubscription = Subscription.fromJson(response);
+			} else {
+				currentSubscription = null;
+			}
+		} catch (_) {
+			try {
+				final fallbackResponse = await _apiClient.get(
+					ApiEndpoints.subscriptionsByUser(encodedEmail),
+				);
 
-    return currentSubscription;
-  }
+				if (fallbackResponse is List) {
+					if (fallbackResponse.isNotEmpty) {
+						Subscription? selected;
 
-  Future<List<SubscriptionType>> getAvailableTypes() async {
-    List<SubscriptionType> availableTypes;
+						for (final item in fallbackResponse) {
+							if (item is Map<String, dynamic>) {
+								final candidate = Subscription.fromJson(item);
+								if (selected == null) {
+									selected = candidate;
+								} else {
+									final selectedDate = selected.startDate;
+									final candidateDate = candidate.startDate;
 
-    final fromTypesEndpoint = await _getAvailableTypesFromPrimaryEndpoints();
-    if (fromTypesEndpoint.isNotEmpty) {
-      availableTypes = fromTypesEndpoint;
-    } else {
-      availableTypes = await _getAvailableTypesFromSubscriptions();
-    }
+									if (selectedDate == null) {
+										if (candidateDate != null) {
+											selected = candidate;
+										} else {
+											selected = selected;
+										}
+									} else {
+										if (candidateDate != null) {
+											if (candidateDate.isAfter(selectedDate)) {
+												selected = candidate;
+											} else {
+												selected = selected;
+											}
+										} else {
+											selected = selected;
+										}
+									}
+								}
+							} else {
+								currentSubscription = null;
+							}
+						}
 
-    return availableTypes;
-  }
+						currentSubscription = selected;
+					} else {
+						currentSubscription = null;
+					}
+				} else {
+					if (fallbackResponse is Map<String, dynamic>) {
+						currentSubscription = Subscription.fromJson(fallbackResponse);
+					} else {
+						currentSubscription = null;
+					}
+				}
+			} catch (_) {
+				currentSubscription = null;
+			}
+		}
 
-  Future<void> createSubscriptionForUser({
-    required String userEmail,
-    required SubscriptionType selectedType,
-  }) async {
-    final normalizedName = selectedType.name.trim().toLowerCase();
-    const endpoints = [
-      'subscriptions',
-      'user-subscriptions',
-    ];
+		return currentSubscription;
+	}
 
-    final payload = {
-      'userEmail': userEmail,
-      'email': userEmail,
-      'subscriptionTypeId': selectedType.id,
-      'typeId': selectedType.id,
-      'subscriptionTypeName': selectedType.name,
-      'typeName': selectedType.name,
-      'status': 'ACTIVE',
-    };
+	Future<SubscriptionDashboardData> getDashboardData(String email) async {
+		final availableTypes = await getAvailableTypes();
 
-    Exception? lastError;
-    bool created = false;
+		Subscription? currentSubscription;
+		if (email.trim().isNotEmpty) {
+			currentSubscription = await getCurrentByUser(email);
+		} else {
+			currentSubscription = null;
+		}
 
-    if (normalizedName == 'free') {
-      created = true;
-    } else {
-      for (final endpoint in endpoints) {
-        if (!created) {
-          try {
-            await _apiClient.post(endpoint, payload);
-            created = true;
-          } catch (error) {
-            if (error is Exception) {
-              lastError = error;
-              created = false;
-            } else {
-              created = false;
-            }
-          }
-        }
-      }
-    }
+		return SubscriptionDashboardData(
+			currentSubscription: currentSubscription,
+			availableTypes: availableTypes,
+		);
+	}
 
-    if (!created && lastError != null) {
-      throw lastError;
-    }
-  }
+	List<SubscriptionType> _mapTypesFromResponse(dynamic response) {
+		List<SubscriptionType> types;
 
-  Future<List<SubscriptionType>> _getAvailableTypesFromPrimaryEndpoints() async {
-    const endpoints = [
-      'subscription-types',
-      'subscriptionTypes',
-      'subscriptions/types',
-      'types/subscriptions',
-    ];
+		if (response is List) {
+			final parsedTypes = <SubscriptionType>[];
+			for (final item in response) {
+				if (item is Map<String, dynamic>) {
+					parsedTypes.add(SubscriptionType.fromJson(item));
+				} else {
+					parsedTypes.add(
+						SubscriptionType(
+							id: null,
+							name: 'Free',
+							description: null,
+							price: null,
+						),
+					);
+				}
+			}
 
-    List<SubscriptionType> types = const [];
+			final normalized = <SubscriptionType>[];
+			for (final type in parsedTypes) {
+				final exists = normalized.any(
+					(existing) =>
+							existing.name.trim().toLowerCase() == type.name.trim().toLowerCase(),
+				);
 
-    for (final endpoint in endpoints) {
-      if (types.isEmpty) {
-        try {
-          final response = await _apiClient.get(
-            endpoint,
-            includeAuthorization: false,
-          );
-          final parsed = _parseTypesResponse(response);
+				if (exists) {
+					normalized.addAll(const <SubscriptionType>[]);
+				} else {
+					normalized.add(type);
+				}
+			}
 
-          if (parsed.isNotEmpty) {
-            types = _deduplicateTypes(parsed);
-          }
-        } catch (_) {
-        }
-      }
-    }
+			types = normalized;
+		} else {
+			if (response is Map<String, dynamic>) {
+				if (response['data'] is List) {
+					final dataList = response['data'] as List;
+					final parsedTypes = <SubscriptionType>[];
+					for (final item in dataList) {
+						if (item is Map<String, dynamic>) {
+							parsedTypes.add(SubscriptionType.fromJson(item));
+						} else {
+							parsedTypes.add(
+								SubscriptionType(
+									id: null,
+									name: 'Free',
+									description: null,
+									price: null,
+								),
+							);
+						}
+					}
+					types = parsedTypes;
+				} else {
+					types = <SubscriptionType>[];
+				}
+			} else {
+				types = <SubscriptionType>[];
+			}
+		}
 
-    return types;
-  }
-
-  Future<List<SubscriptionType>> _getAvailableTypesFromSubscriptions() async {
-    List<SubscriptionType> types;
-
-    try {
-      final response = await _apiClient.get(
-        'subscriptions',
-        includeAuthorization: false,
-      );
-      final fromSubscriptions = _extractTypesFromSubscriptions(response);
-      types = _deduplicateTypes(fromSubscriptions);
-    } catch (_) {
-      types = const [];
-    }
-
-    return types;
-  }
-
-  List<SubscriptionType> _parseTypesResponse(dynamic response) {
-    List<SubscriptionType> parsedTypes;
-
-    final maps = _extractTypeMaps(response);
-    if (maps.isEmpty) {
-      parsedTypes = const [];
-    } else {
-      parsedTypes = maps.map(SubscriptionType.fromJson).toList();
-    }
-
-    return parsedTypes;
-  }
-
-  List<SubscriptionType> _extractTypesFromSubscriptions(dynamic response) {
-    List<SubscriptionType> collected;
-
-    if (response is! List) {
-      collected = const [];
-    } else {
-      collected = [];
-
-      for (final item in response) {
-        if (item is Map<String, dynamic>) {
-          final dynamic nested = item['type'] ?? item['subscriptionType'];
-          if (nested is Map<String, dynamic>) {
-            collected.add(SubscriptionType.fromJson(nested));
-          } else {
-            final dynamic typeId = item['subscriptionTypeId'];
-            final dynamic typeLabel = item['subscriptionTypeLabel'];
-            final dynamic typeCode = item['subscriptionTypeCode'];
-
-            if (typeId != null || typeLabel != null || typeCode != null) {
-              collected.add(
-                SubscriptionType.fromJson({
-                  'id': typeId,
-                  'label': typeLabel,
-                  'code': typeCode,
-                }),
-              );
-            }
-          }
-        }
-      }
-    }
-
-    return collected;
-  }
-
-  List<Map<String, dynamic>> _extractTypeMaps(
-    dynamic node, {
-    int depth = 0,
-  }) {
-    List<Map<String, dynamic>> collected;
-
-    if (node == null || depth > 6) {
-      collected = const [];
-    } else {
-      if (node is List) {
-        collected = [];
-        for (final item in node) {
-          collected.addAll(_extractTypeMaps(item, depth: depth + 1));
-        }
-      } else {
-        if (node is! Map<String, dynamic>) {
-          collected = const [];
-        } else {
-          collected = [];
-
-          if (_looksLikeSubscriptionTypeMap(node)) {
-            collected.add(node);
-          }
-
-          final nestedCandidates = <dynamic>[
-            node['content'],
-            node['data'],
-            node['items'],
-            node['results'],
-            node['types'],
-            node['subscriptionTypes'],
-            node['subscriptions'],
-            node['_embedded'],
-            node['type'],
-            node['subscriptionType'],
-          ];
-
-          for (final candidate in nestedCandidates) {
-            collected.addAll(_extractTypeMaps(candidate, depth: depth + 1));
-          }
-        }
-      }
-    }
-
-    return collected;
-  }
-
-  bool _looksLikeSubscriptionTypeMap(Map<String, dynamic> map) {
-    final hasName = map.containsKey('label') ||
-        map.containsKey('code') ||
-        map.containsKey('subscriptionTypeLabel') ||
-        map.containsKey('subscriptionTypeCode');
-
-    final hasTypeId = map.containsKey('id') || map.containsKey('subscriptionTypeId');
-
-    return hasName || hasTypeId;
-  }
-
-  List<SubscriptionType> _deduplicateTypes(List<SubscriptionType> source) {
-    final Map<String, SubscriptionType> unique = {};
-
-    for (final type in source) {
-      final normalizedName = type.name.trim().toLowerCase();
-      final key = '${type.id ?? 'null'}::$normalizedName';
-      unique[key] = type;
-    }
-
-    return unique.values.toList();
-  }
-
-  Subscription? _selectCurrentFromList(List<dynamic> response) {
-    Subscription? selected;
-
-    final subscriptions = response
-        .whereType<Map<String, dynamic>>()
-        .map(Subscription.fromJson)
-        .toList();
-
-    if (subscriptions.isEmpty) {
-      selected = null;
-    } else {
-      final now = DateTime.now();
-
-      bool isActive(Subscription subscription) {
-        final statusIsActive =
-            (subscription.status ?? '').toUpperCase().trim() == 'ACTIVE';
-        return subscription.active || statusIsActive;
-      }
-
-      bool isValidNow(Subscription subscription) {
-        final startsOk =
-            subscription.startDate == null || !subscription.startDate!.isAfter(now);
-        final endsOk =
-            subscription.endDate == null || subscription.endDate!.isAfter(now);
-        return startsOk && endsOk;
-      }
-
-      int compareByStartDateDesc(Subscription a, Subscription b) {
-        int comparison;
-        final aDate = a.startDate;
-        final bDate = b.startDate;
-
-        if (aDate == null && bDate == null) {
-          comparison = 0;
-        } else {
-          if (aDate == null) {
-            comparison = 1;
-          } else {
-            if (bDate == null) {
-              comparison = -1;
-            } else {
-              comparison = bDate.compareTo(aDate);
-            }
-          }
-        }
-
-        return comparison;
-      }
-
-      final activeAndValidNow = subscriptions
-          .where((subscription) => isActive(subscription) && isValidNow(subscription))
-          .toList()
-        ..sort(compareByStartDateDesc);
-
-      if (activeAndValidNow.isNotEmpty) {
-        selected = activeAndValidNow.first;
-      } else {
-        final active = subscriptions.where(isActive).toList()
-          ..sort(compareByStartDateDesc);
-
-        if (active.isNotEmpty) {
-          selected = active.first;
-        } else {
-          subscriptions.sort(compareByStartDateDesc);
-          selected = subscriptions.first;
-        }
-      }
-    }
-
-    return selected;
-  }
+		return types;
+	}
 }

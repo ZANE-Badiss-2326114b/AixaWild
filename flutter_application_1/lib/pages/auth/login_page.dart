@@ -89,7 +89,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
       controller: controller,
       obscureText: true,
       decoration: const InputDecoration(
-        labelText: 'Mot de pamot_de_passe_tomsse',
+        labelText: 'Mot de passe',
         border: OutlineInputBorder(),
       ),
     );
@@ -133,9 +133,14 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
       _isLoading = true;
     });
 
-    ApiClient.setCredentials(email: email, password: password);
+    bool isAuthenticated;
 
-    final isAuthenticated = await _userRepository.authenticate(email, password);
+    try {
+      final syncedUser = await _userRepository.loginAndSync(email, password);
+      isAuthenticated = syncedUser != null;
+    } catch (_) {
+      isAuthenticated = false;
+    }
 
     if (!mounted) return;
     setState(() {
