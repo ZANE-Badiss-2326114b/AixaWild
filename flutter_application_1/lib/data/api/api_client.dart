@@ -1,39 +1,38 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+//import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  //final String baseUrl = "https://api-7e6i.onrender.com/api";
+  final String baseUrl = "https://api-7e6i.onrender.com/api";
 
-  static String get _defaultBaseUrl {
-    const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-    if (override.isNotEmpty) {
-      return _normalizeBaseUrl(override);
-    }
+  // static String get _defaultBaseUrl {
+  //   const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  //   if (override.isNotEmpty) {
+  //     return _normalizeBaseUrl(override);
+  //   }
 
-    if (kIsWeb) {
-      return 'http://localhost:8080/api';
-    }
+  //   if (kIsWeb) {
+  //     return 'http://localhost:8080/api';
+  //   }
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080/api';
-    }
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     return 'http://10.0.2.2:8080/api';
+  //   }
 
-    return 'http://localhost:8080/api';
-  }
+  //   return 'http://localhost:8080/api';
+  // }
 
-  final String baseUrl;
 
-  ApiClient({String? baseUrl})
-      : baseUrl = _normalizeBaseUrl(baseUrl ?? _defaultBaseUrl);
+  // ApiClient({String? baseUrl})
+  //     : baseUrl = _normalizeBaseUrl(baseUrl ?? _defaultBaseUrl);
 
-  static String _normalizeBaseUrl(String url) {
-    final trimmed = url.trim();
-    if (trimmed.endsWith('/')) {
-      return trimmed.substring(0, trimmed.length - 1);
-    }
-    return trimmed;
-  }
+  // static String _normalizeBaseUrl(String url) {
+  //   final trimmed = url.trim();
+  //   if (trimmed.endsWith('/')) {
+  //     return trimmed.substring(0, trimmed.length - 1);
+  //   }
+  //   return trimmed;
+  // }
 
   static String? _sessionEmail;
   static String? _sessionPassword;
