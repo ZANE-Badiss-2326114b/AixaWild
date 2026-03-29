@@ -6,7 +6,7 @@ part 'user_dao.g.dart';
 
 @DriftAccessor(tables: [Users])
 class UserDao extends DatabaseAccessor<MyDatabase> with _$UserDaoMixin {
-  UserDao(MyDatabase db) : super(db);
+  UserDao(super.db);
 
   // Récupérer l'utilisateur local par son email
   Future<User?> getByEmail(String email) => 

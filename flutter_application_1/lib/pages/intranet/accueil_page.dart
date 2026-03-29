@@ -56,12 +56,12 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild'),
-      body: _buildBody(),
+      body: _buildBody(context),
       floatingActionButton: _buildFloatingActionButton(context),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -69,7 +69,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           const SizedBox(height: 20),
           _buildWelcomeHeader(),
           const SizedBox(height: 20),
-          _buildQuickActionsRow(),
+          _buildQuickActionsRow(context),
           const SizedBox(height: 30),
           _buildDiscoveriesHeader(),
           _buildPostsSection(),
@@ -250,19 +250,28 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
     );
   }
 
-  Widget _buildQuickActionsRow() {
+  Widget _buildQuickActionsRow(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           Row(
             children: [
-              _buildQuickAction(Icons.map, 'Carte', Colors.blue),
+              // Bouton Carte
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte),
+                child: _buildQuickAction(Icons.map, 'Carte', Colors.blue),
+              ),
               const SizedBox(width: 15),
-              _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+              // Bouton Mes fiches
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches),
+                child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+              ),
             ],
           ),
           const SizedBox(height: 12),
+          // Bouton de Test (souvent utilisé en debug/développement)
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
