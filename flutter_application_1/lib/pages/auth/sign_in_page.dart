@@ -16,7 +16,12 @@ class SignInExtranetPage extends StatefulWidget {
 }
 
 class _SignInExtranetPageState extends State<SignInExtranetPage> {
-  static final SubscriptionType _freeType = SubscriptionType(id: null, name: 'Free', description: 'Aucun abonnement');
+  static final SubscriptionType _freeType = SubscriptionType(
+    id: null,
+    name: 'Free',
+    description: 'Aucun abonnement',
+    price: null,
+  );
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -64,7 +69,20 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: Column(children: [const SizedBox(height: 20), _buildNameField(), const SizedBox(height: 16), _buildEmailField(), const SizedBox(height: 16), _buildPasswordField(), const SizedBox(height: 16), _buildSubscriptionDropdown(options), const SizedBox(height: 24), _buildSubmitButton(context)]),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              _buildNameField(),
+              const SizedBox(height: 16),
+              _buildEmailField(),
+              const SizedBox(height: 16),
+              _buildPasswordField(),
+              const SizedBox(height: 16),
+              _buildSubscriptionDropdown(options),
+              const SizedBox(height: 24),
+              _buildSubmitButton(context),
+            ],
+          ),
         );
       },
     );
@@ -92,27 +110,6 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     );
   }
 
-  Widget _buildSubscriptionDropdown(List<SubscriptionType> options) {
-    final allOptions = <SubscriptionType>[_freeType, ...options];
-
-    final selectedValue = allOptions.any((type) => type.id == _selectedType.id && type.name.trim().toLowerCase() == _selectedType.name.trim().toLowerCase()) ? _selectedType : _freeType;
-
-    return DropdownButtonFormField<SubscriptionType>(
-      value: selectedValue,
-      decoration: const InputDecoration(labelText: 'Abonnement', border: OutlineInputBorder()),
-      items: allOptions.map((type) {
-        final detail = type.id == null ? 'Aucun abonnement' : null;
-        return DropdownMenuItem<SubscriptionType>(value: type, child: Text(detail == null ? type.name : '${type.name} ($detail)'));
-      }).toList(),
-      onChanged: (value) {
-        if (value == null) return;
-        setState(() {
-          _selectedType = value;
-        });
-      },
-    );
-  }
-
   Widget _buildSubmitButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -123,9 +120,67 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     );
   }
 
+  Widget _buildSubscriptionDropdown(List<SubscriptionType> options) {
+    final allOptions = <SubscriptionType>[_freeType, ...options];
+
+    SubscriptionType selectedValue;
+    final alreadyExists = allOptions.any(
+      (type) =>
+          type.name.trim().toLowerCase() ==
+          _selectedType.name.trim().toLowerCase(),
+    );
+    if (alreadyExists) {
+      selectedValue = _selectedType;
+    } else {
+      selectedValue = _freeType;
+    }
+
+    return DropdownButtonFormField<SubscriptionType>(
+      value: selectedValue,
+      decoration: const InputDecoration(
+        labelText: 'Type d\'abonnement',
+        border: OutlineInputBorder(),
+      ),
+      items: allOptions
+          .map(
+            (type) => DropdownMenuItem<SubscriptionType>(
+              value: type,
+              child: Text(type.name),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() {
+            _selectedType = value;
+          });
+        } else {
+          setState(() {
+            _selectedType = _freeType;
+          });
+        }
+      },
+    );
+  }
+
   Future<List<SubscriptionType>> _loadSubscriptionTypes() async {
     final remoteTypes = await _subscriptionRepository.getAvailableTypes();
-    return remoteTypes.where((type) => type.name.trim().toLowerCase() != 'free').toList();
+    final normalized = <SubscriptionType>[];
+
+    for (final type in remoteTypes) {
+      if (type.name.trim().isNotEmpty) {
+        final isFree = type.name.trim().toLowerCase() == 'free';
+        if (!isFree) {
+          normalized.add(type);
+        } else {
+          normalized.addAll(const <SubscriptionType>[]);
+        }
+      } else {
+        normalized.addAll(const <SubscriptionType>[]);
+      }
+    }
+
+    return normalized;
   }
 
   Future<void> _onSignInPressed(BuildContext context) async {
@@ -143,11 +198,12 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     });
 
     try {
-      await _userRepository.createUser(email, name, password);
-
-      ApiClient.setCredentials(email: email, password: password);
-
-      await _subscriptionRepository.createSubscriptionForUser(userEmail: email, selectedType: _selectedType);
+      await _userRepository.createUser(
+        email,
+        name,
+        password,
+        typeName: _selectedType.name,
+      );
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.extranetLogin, arguments: email);

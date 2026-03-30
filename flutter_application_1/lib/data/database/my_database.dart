@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import '../models/user_table.dart';
+import 'tables/user_table.dart';
 import '../daos/user_dao.dart';
 import 'connection.dart';
 part 'my_database.g.dart';

@@ -1,10 +1,38 @@
 import 'dart:convert';
+//import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
   final String baseUrl = "https://api-7e6i.onrender.com/api";
-  
-  //final String baseUrl = "http://172.17.0.1:8080/api";
+
+  // static String get _defaultBaseUrl {
+  //   const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  //   if (override.isNotEmpty) {
+  //     return _normalizeBaseUrl(override);
+  //   }
+
+  //   if (kIsWeb) {
+  //     return 'http://localhost:8080/api';
+  //   }
+
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     return 'http://10.0.2.2:8080/api';
+  //   }
+
+  //   return 'http://localhost:8080/api';
+  // }
+
+
+  // ApiClient({String? baseUrl})
+  //     : baseUrl = _normalizeBaseUrl(baseUrl ?? _defaultBaseUrl);
+
+  // static String _normalizeBaseUrl(String url) {
+  //   final trimmed = url.trim();
+  //   if (trimmed.endsWith('/')) {
+  //     return trimmed.substring(0, trimmed.length - 1);
+  //   }
+  //   return trimmed;
+  // }
 
   static String? _sessionEmail;
   static String? _sessionPassword;
@@ -50,7 +78,6 @@ class ApiClient {
       final auth = _auth;
       if (auth != null) {
         headers['Authorization'] = auth;
-      } else {
       }
     }
 
@@ -79,6 +106,32 @@ class ApiClient {
       Uri.parse(url), 
       headers: _buildHeaders(includeAuthorization: includeAuthorization), 
       body: jsonEncode(data)
+    );
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> put(
+    String endpoint,
+    Map<String, dynamic> data, {
+    bool includeAuthorization = true,
+  }) async {
+    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final response = await http.put(
+      Uri.parse(url),
+      headers: _buildHeaders(includeAuthorization: includeAuthorization),
+      body: jsonEncode(data),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> delete(
+    String endpoint, {
+    bool includeAuthorization = true,
+  }) async {
+    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: _buildHeaders(includeAuthorization: includeAuthorization),
     );
     return _handleResponse(response);
   }

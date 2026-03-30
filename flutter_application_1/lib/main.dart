@@ -6,6 +6,7 @@ import 'pages/intranet/accueil_page.dart';
 import 'pages/intranet/carte_page.dart';
 import 'pages/intranet/explication_page.dart';
 import 'pages/intranet/formulaire_page.dart';
+import 'pages/intranet/test_posts_page.dart';
 import 'pages/intranet/je_poste_page.dart';
 import 'pages/intranet/messages_page.dart';
 import 'pages/intranet/mes_fiches_page.dart';
@@ -32,6 +33,7 @@ class AixaWildApp extends StatelessWidget {
         AppRoutes.intranetHome: (context) => const AccueilIntranetPage(),
         AppRoutes.intranetFormulaire: (context) => const FormulaireIntranetPage(),
         AppRoutes.intranetAccueil: (context) => const AccueilIntranetPage(),
+        AppRoutes.intranetTestPosts: (context) => const TestPostsPage(),
         AppRoutes.intranetMesFiches: (context) => const MesFichesIntranetPage(),
         AppRoutes.intranetMessages: (context) => const MessagesIntranetPage(),
         AppRoutes.intranetJePoste: (context) => const JePosteIntranetPage(),

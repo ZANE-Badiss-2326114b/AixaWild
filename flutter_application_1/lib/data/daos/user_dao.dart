@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../database/my_database.dart';
-import '../models/user_table.dart';
+import '../database/tables/user_table.dart';
 
 part 'user_dao.g.dart';
 
@@ -8,19 +8,14 @@ part 'user_dao.g.dart';
 class UserDao extends DatabaseAccessor<MyDatabase> with _$UserDaoMixin {
   UserDao(super.db);
 
-  // Flux de données en temps réel pour l'UI
-  Stream<List<User>> watchAllUsers() => select(users).watch();
-
-  // Opérations de base
-  Future<List<User>> getAllUsers() => select(users).get();
-  
+  // Récupérer l'utilisateur local par son email
   Future<User?> getByEmail(String email) => 
       (select(users)..where((t) => t.email.equals(email))).getSingleOrNull();
 
-  // Mise à jour ou insertion (Upsert)
+  // Insérer ou mettre à jour le profil (Upsert)
   Future<void> upsertUser(UsersCompanion user) => 
       into(users).insertOnConflictUpdate(user);
 
-  Future<void> deleteUser(String email) => 
-      (delete(users)..where((t) => t.email.equals(email))).go();
+  // Supprimer les données locales (Logout)
+  Future<void> clearAll() => delete(users).go();
 }
