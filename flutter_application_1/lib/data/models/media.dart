@@ -12,13 +12,14 @@ class Media {
 	factory Media.fromJson(Map<String, dynamic> json) {
 		final idValue = json['id'] ?? json['id_media'];
 		final postIdValue = json['postId'] ?? json['post_id'];
+		final urlValue = json['secureUrl'] ?? json['secure_url'] ?? json['url'];
 
 		return Media(
 			id: idValue is num ? idValue.toInt() : int.tryParse('$idValue') ?? 0,
 			postId: postIdValue is num
 					? postIdValue.toInt()
 					: int.tryParse('$postIdValue') ?? 0,
-			url: (json['url'] ?? '').toString(),
+			url: (urlValue ?? '').toString(),
 		);
 	}
 

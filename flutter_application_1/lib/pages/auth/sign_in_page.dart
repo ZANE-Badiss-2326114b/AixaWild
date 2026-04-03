@@ -208,8 +208,8 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.extranetLogin, arguments: email);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Compte créé avec succès.')));
-    } catch (_) {
-      _showMessage('Échec de l\'inscription, veuillez réessayer.');
+    } catch (error) {
+      _showMessage('Échec de l\'inscription: $error');
     } finally {
       if (mounted) {
         setState(() {

@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../data/api/api_client.dart';
+import '../../data/models/media.dart';
 import '../../data/models/post.dart';
+import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/post_repository.dart';
 import '../../widgets/intranet_appbar.dart';
 
@@ -14,6 +19,9 @@ class TestPostsPage extends StatefulWidget {
 
 class _TestPostsPageState extends State<TestPostsPage> {
   late final PostRepository _postRepository;
+  late final MediaRepository _mediaRepository;
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _createPostImage;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
@@ -22,6 +30,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
   bool _isInitialized = false;
   bool _isCreatingPost = false;
   List<Post> _posts = <Post>[];
+  final Map<int, List<Media>> _mediaByPost = <int, List<Media>>{};
+  final Map<int, bool> _isUploadingByPost = <int, bool>{};
   bool _isLoadingPosts = true;
 
   String get _currentEmail => _emailController.text.trim();
@@ -31,6 +41,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
     super.initState();
     final apiClient = ApiClient();
     _postRepository = PostRepository(apiClient);
+    _mediaRepository = MediaRepository(apiClient);
   }
 
   @override
@@ -106,6 +117,39 @@ class _TestPostsPageState extends State<TestPostsPage> {
               decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Contenu'),
             ),
             const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isCreatingPost ? null : _pickImageForCreatePost,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(_createPostImage == null ? 'Ajouter une image (optionnel)' : 'Changer l\'image'),
+            ),
+            if (_createPostImage != null) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(_createPostImage!.path),
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _isCreatingPost
+                      ? null
+                      : () {
+                          setState(() {
+                            _createPostImage = null;
+                          });
+                        },
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Retirer l\'image'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -163,10 +207,28 @@ class _TestPostsPageState extends State<TestPostsPage> {
                     Text('Auteur: ${post.authorEmail}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                     Text('Likes: ${post.likesCount}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                     const SizedBox(height: 8),
+                    _buildMediaSection(post),
+                    const SizedBox(height: 8),
                     if (isOwnPost)
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: Chip(label: Text('Votre post')),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerRight,
+                            child: Chip(label: Text('Votre post')),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadImage(post.id),
+                              icon: _isUploadingByPost[post.id] == true
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.image),
+                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter une image depuis la galerie'),
+                            ),
+                          ),
+                        ],
                       )
                     else
                       const Align(
@@ -198,6 +260,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
           _posts = posts;
         });
       }
+      await _loadMediaForPosts(posts);
     } catch (_) {
       if (mounted) {
         _showMessage('Erreur lors du chargement des posts.');
@@ -209,6 +272,95 @@ class _TestPostsPageState extends State<TestPostsPage> {
         });
       }
     }
+  }
+
+  Future<void> _loadMediaForPosts(List<Post> posts) async {
+    final loadedMedia = <int, List<Media>>{};
+
+    for (final post in posts) {
+      try {
+        final media = await _mediaRepository.getByPostId(post.id);
+        loadedMedia[post.id] = media;
+      } catch (_) {
+        loadedMedia[post.id] = <Media>[];
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _mediaByPost
+          ..clear()
+          ..addAll(loadedMedia);
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadImage(int postId) async {
+    final selectedImage = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (selectedImage == null) {
+      return;
+    }
+
+    setState(() {
+      _isUploadingByPost[postId] = true;
+    });
+
+    try {
+      final media = await _mediaRepository.uploadMedia(postId: postId, imageFile: File(selectedImage.path));
+
+      if (media == null) {
+        _showMessage('Upload échoué.');
+      } else {
+        if (mounted) {
+          final currentList = List<Media>.from(_mediaByPost[postId] ?? <Media>[]);
+          currentList.insert(0, media);
+          setState(() {
+            _mediaByPost[postId] = currentList;
+          });
+        }
+        _showMessage('Image uploadée avec succès.');
+      }
+    } catch (error) {
+      _showMessage('Erreur API pendant l\'upload: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingByPost[postId] = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildMediaSection(Post post) {
+    final mediaList = _mediaByPost[post.id] ?? <Media>[];
+
+    if (mediaList.isEmpty) {
+      return const Text('Aucune image associée.', style: TextStyle(fontSize: 12, color: Colors.black54));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: mediaList.map((media) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              media.url,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text('Impossible de charger l\'image.'),
+                );
+              },
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> _createPost() async {
@@ -229,19 +381,87 @@ class _TestPostsPageState extends State<TestPostsPage> {
         if (created == null) {
           _showMessage('Création échouée.');
         } else {
+          final selectedImage = _createPostImage;
+          Media? uploadedMedia;
+          var uploadFailed = false;
+
+          if (selectedImage != null) {
+            try {
+              uploadedMedia = await _mediaRepository.uploadMedia(postId: created.id, imageFile: File(selectedImage.path));
+            } catch (_) {
+              uploadFailed = true;
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              _posts = <Post>[created, ..._posts.where((post) => post.id != created.id)];
+              if (uploadedMedia != null) {
+                _mediaByPost[created.id] = <Media>[uploadedMedia];
+              }
+            });
+          }
+
+          await _loadMediaForPost(created.id);
+
           _titleController.clear();
           _contentController.clear();
-          _showMessage('Post créé avec succès.');
+          if (mounted) {
+            setState(() {
+              _createPostImage = null;
+            });
+          }
+
+          if (selectedImage != null) {
+            if (uploadFailed) {
+              _showMessage('Post créé, mais échec de l\'upload de l\'image.');
+            } else {
+              _showMessage('Post et image créés avec succès.');
+            }
+          } else {
+            _showMessage('Post créé avec succès.');
+          }
+
           await _loadPosts();
         }
-      } catch (_) {
-        _showMessage('Erreur API pendant la création.');
+      } catch (error) {
+        _showMessage('Erreur API pendant la création: $error');
       } finally {
         if (mounted) {
           setState(() {
             _isCreatingPost = false;
           });
         }
+      }
+    }
+  }
+
+  Future<void> _pickImageForCreatePost() async {
+    final selectedImage = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (selectedImage == null) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _createPostImage = selectedImage;
+      });
+    }
+  }
+
+  Future<void> _loadMediaForPost(int postId) async {
+    try {
+      final media = await _mediaRepository.getByPostId(postId);
+      if (mounted) {
+        setState(() {
+          _mediaByPost[postId] = media;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _mediaByPost[postId] = <Media>[];
+        });
       }
     }
   }

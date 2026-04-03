@@ -159,6 +159,16 @@ class UserRepository {
         }
       }
     } catch (e) {
+      final errorText = e.toString();
+      final isUnauthorized =
+          errorText.contains('Erreur API (401)') ||
+          errorText.contains('Erreur API (403)');
+
+      if (isUnauthorized) {
+        ApiClient.clearCredentials();
+        return null;
+      }
+
       final localUser = await _userDao.getByEmail(email);
       if (localUser != null) {
         if (localUser.passwordHash == password) {

@@ -1,39 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 //import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
 
 class ApiClient {
+  
+
   final String baseUrl = "https://api-7e6i.onrender.com/api";
 
-  // static String get _defaultBaseUrl {
-  //   const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-  //   if (override.isNotEmpty) {
-  //     return _normalizeBaseUrl(override);
-  //   }
-
-  //   if (kIsWeb) {
-  //     return 'http://localhost:8080/api';
-  //   }
-
-  //   if (defaultTargetPlatform == TargetPlatform.android) {
-  //     return 'http://10.0.2.2:8080/api';
-  //   }
-
-  //   return 'http://localhost:8080/api';
-  // }
-
-
-  // ApiClient({String? baseUrl})
-  //     : baseUrl = _normalizeBaseUrl(baseUrl ?? _defaultBaseUrl);
-
-  // static String _normalizeBaseUrl(String url) {
-  //   final trimmed = url.trim();
-  //   if (trimmed.endsWith('/')) {
-  //     return trimmed.substring(0, trimmed.length - 1);
-  //   }
-  //   return trimmed;
-  // }
-
+  //final String baseUrl = "http://localhost:8080/api";
   static String? _sessionEmail;
   static String? _sessionPassword;
 
@@ -84,11 +60,15 @@ class ApiClient {
     return headers;
   }
 
+  String _buildUrl(String endpoint) {
+    return endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+  }
+
   Future<dynamic> get(
     String endpoint, {
     bool includeAuthorization = true,
   }) async {
-    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final url = _buildUrl(endpoint);
     final response = await http.get(
       Uri.parse(url),
       headers: _buildHeaders(includeAuthorization: includeAuthorization),
@@ -101,7 +81,7 @@ class ApiClient {
     Map<String, dynamic> data, {
     bool includeAuthorization = true,
   }) async {
-    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final url = _buildUrl(endpoint);
     final response = await http.post(
       Uri.parse(url), 
       headers: _buildHeaders(includeAuthorization: includeAuthorization), 
@@ -115,7 +95,7 @@ class ApiClient {
     Map<String, dynamic> data, {
     bool includeAuthorization = true,
   }) async {
-    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final url = _buildUrl(endpoint);
     final response = await http.put(
       Uri.parse(url),
       headers: _buildHeaders(includeAuthorization: includeAuthorization),
@@ -128,11 +108,35 @@ class ApiClient {
     String endpoint, {
     bool includeAuthorization = true,
   }) async {
-    final url = endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
+    final url = _buildUrl(endpoint);
     final response = await http.delete(
       Uri.parse(url),
       headers: _buildHeaders(includeAuthorization: includeAuthorization),
     );
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> uploadMedia(
+    int postId,
+    File imageFile, {
+    bool includeAuthorization = true,
+  }) async {
+    final endpoint = '/posts/$postId/media';
+    final request = http.MultipartRequest('POST', Uri.parse(_buildUrl(endpoint)));
+    final headers = _buildHeaders(includeAuthorization: includeAuthorization);
+    headers.remove('Content-Type');
+    request.headers.addAll(headers);
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+        filename: path.basename(imageFile.path),
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
     return _handleResponse(response);
   }
 

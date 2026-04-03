@@ -134,12 +134,14 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     });
 
     bool isAuthenticated;
+    String? loginError;
 
     try {
       final syncedUser = await _userRepository.loginAndSync(email, password);
       isAuthenticated = syncedUser != null;
-    } catch (_) {
+    } catch (error) {
       isAuthenticated = false;
+      loginError = error.toString();
     }
 
     if (!mounted) return;
@@ -149,7 +151,11 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
 
     if (!isAuthenticated) {
       ApiClient.clearCredentials();
-      _showMessage('Connexion impossible: identifiants invalides.');
+      if (loginError != null && loginError.isNotEmpty) {
+        _showMessage('Connexion impossible: $loginError');
+      } else {
+        _showMessage('Connexion impossible: identifiants invalides.');
+      }
       return;
     }
 

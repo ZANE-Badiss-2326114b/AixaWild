@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../api/api_client.dart';
 import '../models/media.dart';
 import '../utils/api_endpoints.dart';
@@ -36,5 +38,16 @@ class MediaRepository {
 
   Future<void> delete(int mediaId) async {
     await _apiClient.delete(ApiEndpoints.mediaById(mediaId));
+  }
+
+  Future<Media?> uploadMedia({
+    required int postId,
+    required File imageFile,
+  }) async {
+    final response = await _apiClient.uploadMedia(postId, imageFile);
+    if (response is Map<String, dynamic>) {
+      return Media.fromJson(response);
+    }
+    return null;
   }
 }
