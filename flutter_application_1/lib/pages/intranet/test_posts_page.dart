@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../data/api/api_client.dart';
 import '../../data/models/media.dart';
@@ -21,7 +22,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
   late final PostRepository _postRepository;
   late final MediaRepository _mediaRepository;
   final ImagePicker _imagePicker = ImagePicker();
-  XFile? _createPostImage;
+  List<XFile> _createPostImages = <XFile>[];
+  XFile? _createPostVideo;
+  static const Duration _maxVideoDuration = Duration(seconds: 21);
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
@@ -118,22 +121,63 @@ class _TestPostsPageState extends State<TestPostsPage> {
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: _isCreatingPost ? null : _pickImageForCreatePost,
+              onPressed: _isCreatingPost ? null : _pickImagesForCreatePost,
               icon: const Icon(Icons.photo_library_outlined),
-              label: Text(_createPostImage == null ? 'Ajouter une image (optionnel)' : 'Changer l\'image'),
+              label: Text(_createPostImages.isEmpty ? 'Ajouter des images (optionnel)' : '${_createPostImages.length} image(s) sélectionnée(s)'),
             ),
-            if (_createPostImage != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _isCreatingPost ? null : _pickVideoForCreatePost,
+              icon: const Icon(Icons.videocam_outlined),
+              label: Text(_createPostVideo == null ? 'Ajouter une vidéo (max 21s)' : 'Vidéo sélectionnée (max 21s)'),
+            ),
+            if (_createPostImages.isNotEmpty) ...[
               const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  File(_createPostImage!.path),
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+              SizedBox(
+                height: 110,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _createPostImages.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final image = _createPostImages[index];
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(image.path),
+                            height: 110,
+                            width: 110,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: _isCreatingPost
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _createPostImages.removeAt(index);
+                                    });
+                                  },
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: const Icon(Icons.close, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 6),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -141,11 +185,29 @@ class _TestPostsPageState extends State<TestPostsPage> {
                       ? null
                       : () {
                           setState(() {
-                            _createPostImage = null;
+                            _createPostImages = <XFile>[];
                           });
                         },
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Retirer l\'image'),
+                  label: const Text('Retirer toutes les images'),
+                ),
+              ),
+            ],
+            if (_createPostVideo != null) ...[
+              const SizedBox(height: 8),
+              _LocalVideoPreview(videoFile: File(_createPostVideo!.path)),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _isCreatingPost
+                      ? null
+                      : () {
+                          setState(() {
+                            _createPostVideo = null;
+                          });
+                        },
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Retirer la vidéo'),
                 ),
               ),
             ],
@@ -221,11 +283,22 @@ class _TestPostsPageState extends State<TestPostsPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadImage(post.id),
+                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadImages(post.id),
                               icon: _isUploadingByPost[post.id] == true
                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                                   : const Icon(Icons.image),
-                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter une image depuis la galerie'),
+                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter des images depuis la galerie'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadVideo(post.id),
+                              icon: _isUploadingByPost[post.id] == true
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.videocam),
+                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter une vidéo (max 21s)'),
                             ),
                           ),
                         ],
@@ -295,9 +368,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
     }
   }
 
-  Future<void> _pickAndUploadImage(int postId) async {
-    final selectedImage = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (selectedImage == null) {
+  Future<void> _pickAndUploadImages(int postId) async {
+    final selectedImages = await _imagePicker.pickMultiImage();
+    if (selectedImages.isEmpty) {
       return;
     }
 
@@ -306,19 +379,23 @@ class _TestPostsPageState extends State<TestPostsPage> {
     });
 
     try {
-      final media = await _mediaRepository.uploadMedia(postId: postId, imageFile: File(selectedImage.path));
+      final uploadedMedia = <Media>[];
+      for (final selectedImage in selectedImages) {
+        final media = await _mediaRepository.uploadMedia(postId: postId, mediaFile: File(selectedImage.path));
+        if (media != null) {
+          uploadedMedia.add(media);
+        }
+      }
 
-      if (media == null) {
+      if (uploadedMedia.isEmpty) {
         _showMessage('Upload échoué.');
       } else {
         if (mounted) {
           final currentList = List<Media>.from(_mediaByPost[postId] ?? <Media>[]);
-          currentList.insert(0, media);
-          setState(() {
-            _mediaByPost[postId] = currentList;
-          });
+          _mediaByPost[postId] = <Media>[...uploadedMedia, ...currentList];
+          setState(() {});
         }
-        _showMessage('Image uploadée avec succès.');
+        _showMessage('${uploadedMedia.length} image(s) uploadée(s) avec succès.');
       }
     } catch (error) {
       _showMessage('Erreur API pendant l\'upload: $error');
@@ -335,29 +412,32 @@ class _TestPostsPageState extends State<TestPostsPage> {
     final mediaList = _mediaByPost[post.id] ?? <Media>[];
 
     if (mediaList.isEmpty) {
-      return const Text('Aucune image associée.', style: TextStyle(fontSize: 12, color: Colors.black54));
+      return const Text('Aucune image/vidéo associée.', style: TextStyle(fontSize: 12, color: Colors.black54));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: mediaList.map((media) {
+        final isVideo = _isVideoUrl(media.url);
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              media.url,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Text('Impossible de charger l\'image.'),
-                );
-              },
-            ),
-          ),
+          child: isVideo
+              ? _NetworkVideoPlayer(url: media.url)
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    media.url,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      return const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Text('Impossible de charger l\'image.'),
+                      );
+                    },
+                  ),
+                ),
         );
       }).toList(),
     );
@@ -381,13 +461,38 @@ class _TestPostsPageState extends State<TestPostsPage> {
         if (created == null) {
           _showMessage('Création échouée.');
         } else {
-          final selectedImage = _createPostImage;
-          Media? uploadedMedia;
+          final selectedImages = List<XFile>.from(_createPostImages);
+          final selectedVideo = _createPostVideo;
+          var uploadedCount = 0;
           var uploadFailed = false;
 
-          if (selectedImage != null) {
+          for (final selectedImage in selectedImages) {
             try {
-              uploadedMedia = await _mediaRepository.uploadMedia(postId: created.id, imageFile: File(selectedImage.path));
+              final uploadedMedia = await _mediaRepository.uploadMedia(
+                postId: created.id,
+                mediaFile: File(selectedImage.path),
+              );
+              if (uploadedMedia != null) {
+                uploadedCount++;
+              } else {
+                uploadFailed = true;
+              }
+            } catch (_) {
+              uploadFailed = true;
+            }
+          }
+
+          if (selectedVideo != null) {
+            try {
+              final uploadedMedia = await _mediaRepository.uploadMedia(
+                postId: created.id,
+                mediaFile: File(selectedVideo.path),
+              );
+              if (uploadedMedia != null) {
+                uploadedCount++;
+              } else {
+                uploadFailed = true;
+              }
             } catch (_) {
               uploadFailed = true;
             }
@@ -396,9 +501,6 @@ class _TestPostsPageState extends State<TestPostsPage> {
           if (mounted) {
             setState(() {
               _posts = <Post>[created, ..._posts.where((post) => post.id != created.id)];
-              if (uploadedMedia != null) {
-                _mediaByPost[created.id] = <Media>[uploadedMedia];
-              }
             });
           }
 
@@ -408,15 +510,16 @@ class _TestPostsPageState extends State<TestPostsPage> {
           _contentController.clear();
           if (mounted) {
             setState(() {
-              _createPostImage = null;
+              _createPostImages = <XFile>[];
+              _createPostVideo = null;
             });
           }
 
-          if (selectedImage != null) {
+          if (selectedImages.isNotEmpty || selectedVideo != null) {
             if (uploadFailed) {
-              _showMessage('Post créé, mais échec de l\'upload de l\'image.');
+              _showMessage('Post créé, mais l\'upload de certains médias a échoué.');
             } else {
-              _showMessage('Post et image créés avec succès.');
+              _showMessage('Post et ${uploadedCount} média(s) créés avec succès.');
             }
           } else {
             _showMessage('Post créé avec succès.');
@@ -436,17 +539,106 @@ class _TestPostsPageState extends State<TestPostsPage> {
     }
   }
 
-  Future<void> _pickImageForCreatePost() async {
-    final selectedImage = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (selectedImage == null) {
+  Future<void> _pickImagesForCreatePost() async {
+    final selectedImages = await _imagePicker.pickMultiImage();
+    if (selectedImages.isEmpty) {
       return;
     }
 
     if (mounted) {
       setState(() {
-        _createPostImage = selectedImage;
+        _createPostImages = <XFile>[..._createPostImages, ...selectedImages];
       });
     }
+  }
+
+  Future<void> _pickVideoForCreatePost() async {
+    final selectedVideo = await _imagePicker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: _maxVideoDuration,
+    );
+
+    if (selectedVideo == null) {
+      return;
+    }
+
+    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
+    if (!isValidDuration) {
+      _showMessage('La vidéo doit durer 21 secondes maximum.');
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _createPostVideo = selectedVideo;
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadVideo(int postId) async {
+    final selectedVideo = await _imagePicker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: _maxVideoDuration,
+    );
+    if (selectedVideo == null) {
+      return;
+    }
+
+    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
+    if (!isValidDuration) {
+      _showMessage('La vidéo doit durer 21 secondes maximum.');
+      return;
+    }
+
+    setState(() {
+      _isUploadingByPost[postId] = true;
+    });
+
+    try {
+      final media = await _mediaRepository.uploadMedia(postId: postId, mediaFile: File(selectedVideo.path));
+
+      if (media == null) {
+        _showMessage('Upload vidéo échoué.');
+      } else {
+        if (mounted) {
+          final currentList = List<Media>.from(_mediaByPost[postId] ?? <Media>[]);
+          _mediaByPost[postId] = <Media>[media, ...currentList];
+          setState(() {});
+        }
+        _showMessage('Vidéo uploadée avec succès.');
+      }
+    } catch (error) {
+      _showMessage('Erreur API pendant l\'upload vidéo: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingByPost[postId] = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _isVideoWithinMaxDuration(File videoFile) async {
+    final controller = VideoPlayerController.file(videoFile);
+    try {
+      await controller.initialize();
+      final duration = controller.value.duration;
+      return duration <= _maxVideoDuration;
+    } catch (_) {
+      return false;
+    } finally {
+      await controller.dispose();
+    }
+  }
+
+  bool _isVideoUrl(String url) {
+    final normalizedPath = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return normalizedPath.endsWith('.mp4') ||
+        normalizedPath.endsWith('.mov') ||
+        normalizedPath.endsWith('.webm') ||
+        normalizedPath.endsWith('.m4v') ||
+        normalizedPath.endsWith('.avi') ||
+        normalizedPath.endsWith('.mkv');
   }
 
   Future<void> _loadMediaForPost(int postId) async {
@@ -470,5 +662,147 @@ class _TestPostsPageState extends State<TestPostsPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
+  }
+}
+
+class _LocalVideoPreview extends StatefulWidget {
+  final File videoFile;
+
+  const _LocalVideoPreview({required this.videoFile});
+
+  @override
+  State<_LocalVideoPreview> createState() => _LocalVideoPreviewState();
+}
+
+class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
+  late final VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.videoFile)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller),
+            CircleAvatar(
+              backgroundColor: Colors.black54,
+              child: IconButton(
+                icon: Icon(
+                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (_controller.value.isPlaying) {
+                      _controller.pause();
+                    } else {
+                      _controller.play();
+                    }
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NetworkVideoPlayer extends StatefulWidget {
+  final String url;
+
+  const _NetworkVideoPlayer({required this.url});
+
+  @override
+  State<_NetworkVideoPlayer> createState() => _NetworkVideoPlayerState();
+}
+
+class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
+  late final VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller),
+            CircleAvatar(
+              backgroundColor: Colors.black54,
+              child: IconButton(
+                icon: Icon(
+                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (_controller.value.isPlaying) {
+                      _controller.pause();
+                    } else {
+                      _controller.play();
+                    }
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -7,9 +7,9 @@ import 'package:path/path.dart' as path;
 class ApiClient {
   
 
-  final String baseUrl = "https://api-7e6i.onrender.com/api";
+  //final String baseUrl = "https://api-7e6i.onrender.com/api";
 
-  //final String baseUrl = "http://localhost:8080/api";
+  final String baseUrl = "http://localhost:8080/api";
   static String? _sessionEmail;
   static String? _sessionPassword;
 
@@ -118,7 +118,7 @@ class ApiClient {
 
   Future<dynamic> uploadMedia(
     int postId,
-    File imageFile, {
+    File mediaFile, {
     bool includeAuthorization = true,
   }) async {
     final endpoint = '/posts/$postId/media';
@@ -130,8 +130,8 @@ class ApiClient {
     request.files.add(
       await http.MultipartFile.fromPath(
         'file',
-        imageFile.path,
-        filename: path.basename(imageFile.path),
+        mediaFile.path,
+        filename: path.basename(mediaFile.path),
       ),
     );
 

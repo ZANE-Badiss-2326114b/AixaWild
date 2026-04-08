@@ -42,9 +42,9 @@ class MediaRepository {
 
   Future<Media?> uploadMedia({
     required int postId,
-    required File imageFile,
+    required File mediaFile,
   }) async {
-    final response = await _apiClient.uploadMedia(postId, imageFile);
+    final response = await _apiClient.uploadMedia(postId, mediaFile);
     if (response is Map<String, dynamic>) {
       return Media.fromJson(response);
     }
