@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'pages/auth/extranet_home_page.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/sign_in_page.dart';
@@ -13,6 +15,12 @@ import 'pages/intranet/mes_fiches_page.dart';
 import 'shared/navigation/app_routes.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    VideoPlayerMediaKit.ensureInitialized(web: true);
+  } else {
+    VideoPlayerMediaKit.ensureInitialized(linux: true, windows: true, macOS: true, android: true, iOS: true);
+  }
   runApp(const AixaWildApp());
 }
 
