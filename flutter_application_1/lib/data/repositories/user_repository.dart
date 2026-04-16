@@ -1,70 +1,54 @@
 import 'package:drift/drift.dart';
 
-import '../api/api_client.dart';
-import '../daos/user_dao.dart';
-import '../database/my_database.dart' as db;
-import '../models/user.dart';
-import '../utils/api_endpoints.dart';
+import 'package:flutter_application_1/data/api/auth/auth_token_manager.dart';
+import 'package:flutter_application_1/data/api/core/api_interface.dart';
+import 'package:flutter_application_1/data/daos/user_dao.dart';
+import 'package:flutter_application_1/data/database/my_database.dart' as db;
+import 'package:flutter_application_1/data/models/user.dart';
+import 'package:flutter_application_1/data/utils/api_endpoints.dart';
 
 class UserRepository {
-  final ApiClient _apiClient;
+  final IApiClient _apiClient;
   final UserDao _userDao;
 
   UserRepository(this._apiClient, this._userDao);
 
-  Future<User?> createUser(
-    String email,
-    String username,
-    String password, {
-    String? typeName,
-  }) async {
+  Future<void> _authenticateAndStoreToken(String email, String password) async {
+    final response = await _apiClient.post(ApiEndpoints.authLogin, <String, String>{'email': email.trim(), 'password': password}, includeAuthorization: false);
+
+    if (response is! Map<String, dynamic>) {
+      throw Exception('Réponse de login invalide');
+    }
+
+    final token = (response['token'] ?? '').toString().trim();
+    if (token.isEmpty) {
+      throw Exception('Token absent dans la réponse de login');
+    }
+
+    await AuthTokenManager.instance.saveToken(token);
+  }
+
+  Future<User?> createUser(String email, String username, String password, {String? typeName}) async {
     User? createdUser;
 
     final normalizedTypeName = typeName?.trim().toLowerCase() ?? '';
-    final shouldSendTypeName =
-        normalizedTypeName.isNotEmpty && normalizedTypeName != 'free';
+    final shouldSendTypeName = normalizedTypeName.isNotEmpty && normalizedTypeName != 'free';
 
-    final payload = <String, dynamic>{
-      'email': email,
-      'username': username,
-      'password': password,
-    };
+    final payload = <String, dynamic>{'email': email, 'username': username, 'password': password};
 
     if (shouldSendTypeName) {
       payload['typeName'] = normalizedTypeName;
     }
 
-    final response = await _apiClient.post(
-      ApiEndpoints.users,
-      payload,
-      includeAuthorization: false,
-    );
+    final response = await _apiClient.post(ApiEndpoints.users, payload, includeAuthorization: false);
 
     if (response is Map<String, dynamic>) {
       final remoteUser = User.fromJson(response);
-      await _userDao.upsertUser(
-        db.UsersCompanion.insert(
-          email: remoteUser.email,
-          username: remoteUser.username,
-          passwordHash: password,
-          typeName: Value(remoteUser.typeName),
-          createdAt: Value(remoteUser.createdAt),
-        ),
-      );
+      await _userDao.upsertUser(db.UsersCompanion.insert(email: remoteUser.email, username: remoteUser.username, passwordHash: password, typeName: Value(remoteUser.typeName), createdAt: Value(remoteUser.createdAt)));
       createdUser = remoteUser;
     } else {
-      await _userDao.upsertUser(
-        db.UsersCompanion.insert(
-          email: email,
-          username: username,
-          passwordHash: password,
-        ),
-      );
-      createdUser = User(
-        email: email,
-        username: username,
-        typeName: shouldSendTypeName ? normalizedTypeName : null,
-      );
+      await _userDao.upsertUser(db.UsersCompanion.insert(email: email, username: username, passwordHash: password));
+      createdUser = User(email: email, username: username, typeName: shouldSendTypeName ? normalizedTypeName : null);
     }
 
     return createdUser;
@@ -73,23 +57,15 @@ class UserRepository {
   Future<bool> authenticate(String email, String password) async {
     bool isAuthenticated;
 
-    ApiClient.setCredentials(email: email, password: password);
-
     try {
+      await _authenticateAndStoreToken(email, password);
+
       final response = await _apiClient.get(ApiEndpoints.userDetails(email));
 
       if (response is Map<String, dynamic>) {
         final remoteUser = User.fromJson(response);
 
-        await _userDao.upsertUser(
-          db.UsersCompanion.insert(
-            email: remoteUser.email,
-            username: remoteUser.username,
-            passwordHash: password,
-            typeName: Value(remoteUser.typeName),
-            createdAt: Value(remoteUser.createdAt),
-          ),
-        );
+        await _userDao.upsertUser(db.UsersCompanion.insert(email: remoteUser.email, username: remoteUser.username, passwordHash: password, typeName: Value(remoteUser.typeName), createdAt: Value(remoteUser.createdAt)));
 
         isAuthenticated = true;
       } else {
@@ -124,33 +100,22 @@ class UserRepository {
   Future<User?> loginAndSync(String email, String password) async {
     User? syncedUser;
 
-    ApiClient.setCredentials(email: email, password: password);
-
     try {
+      await _authenticateAndStoreToken(email, password);
+
       final response = await _apiClient.get(ApiEndpoints.userDetails(email));
 
       if (response is Map<String, dynamic>) {
         final remoteUser = User.fromJson(response);
 
-        await _userDao.upsertUser(
-          db.UsersCompanion.insert(
-            email: remoteUser.email,
-            username: remoteUser.username,
-            passwordHash: password,
-            typeName: Value(remoteUser.typeName),
-            createdAt: Value(remoteUser.createdAt),
-          ),
-        );
+        await _userDao.upsertUser(db.UsersCompanion.insert(email: remoteUser.email, username: remoteUser.username, passwordHash: password, typeName: Value(remoteUser.typeName), createdAt: Value(remoteUser.createdAt)));
 
         syncedUser = remoteUser;
       } else {
         final localUser = await _userDao.getByEmail(email);
         if (localUser != null) {
           if (localUser.passwordHash == password) {
-            syncedUser = User(
-              email: localUser.email,
-              username: localUser.username,
-            );
+            syncedUser = User(email: localUser.email, username: localUser.username);
           } else {
             syncedUser = null;
           }
@@ -160,22 +125,17 @@ class UserRepository {
       }
     } catch (e) {
       final errorText = e.toString();
-      final isUnauthorized =
-          errorText.contains('Erreur API (401)') ||
-          errorText.contains('Erreur API (403)');
+      final isUnauthorized = errorText.contains('Erreur API (401)') || errorText.contains('Erreur API (403)');
 
       if (isUnauthorized) {
-        ApiClient.clearCredentials();
+        await AuthTokenManager.instance.clearToken();
         return null;
       }
 
       final localUser = await _userDao.getByEmail(email);
       if (localUser != null) {
         if (localUser.passwordHash == password) {
-          syncedUser = User(
-            email: localUser.email,
-            username: localUser.username,
-          );
+          syncedUser = User(email: localUser.email, username: localUser.username);
         } else {
           rethrow;
         }
@@ -188,8 +148,8 @@ class UserRepository {
   }
 
   Future<void> logout() async {
-    ApiClient.clearCredentials();
+    await AuthTokenManager.instance.clearToken();
     // Optionnel : supprimer les données locales au logout
-    // await _userDao.clearAll(); 
+    // await _userDao.clearAll();
   }
 }

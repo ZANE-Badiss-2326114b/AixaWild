@@ -1,9 +1,9 @@
-import '../api/api_client.dart';
-import '../models/post.dart';
-import '../utils/api_endpoints.dart';
+import 'package:flutter_application_1/data/api/core/api_interface.dart';
+import 'package:flutter_application_1/data/models/post.dart';
+import 'package:flutter_application_1/data/utils/api_endpoints.dart';
 
 class PostRepository {
-	final ApiClient _apiClient;
+	final IApiClient _apiClient;
 
 	PostRepository(this._apiClient);
 

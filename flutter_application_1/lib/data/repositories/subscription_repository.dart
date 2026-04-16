@@ -1,10 +1,10 @@
-import '../api/api_client.dart';
-import '../models/subscription.dart';
-import '../models/subscription_type.dart';
-import '../utils/api_endpoints.dart';
+import 'package:flutter_application_1/data/api/core/api_interface.dart';
+import 'package:flutter_application_1/data/models/subscription.dart';
+import 'package:flutter_application_1/data/models/subscription_type.dart';
+import 'package:flutter_application_1/data/utils/api_endpoints.dart';
 
 class SubscriptionRepository {
-	final ApiClient _apiClient;
+	final IApiClient _apiClient;
 
 	SubscriptionRepository(this._apiClient);
 

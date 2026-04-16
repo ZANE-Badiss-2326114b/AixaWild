@@ -1,9 +1,9 @@
-import '../api/api_client.dart';
-import '../models/opinion.dart';
-import '../utils/api_endpoints.dart';
+import 'package:flutter_application_1/data/api/core/api_interface.dart';
+import 'package:flutter_application_1/data/models/opinion.dart';
+import 'package:flutter_application_1/data/utils/api_endpoints.dart';
 
 class OpinionRepository {
-  final ApiClient _apiClient;
+  final IApiClient _apiClient;
 
   OpinionRepository(this._apiClient);
 

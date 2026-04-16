@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,8 +22,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
   late final PostRepository _postRepository;
   late final MediaRepository _mediaRepository;
   final ImagePicker _imagePicker = ImagePicker();
-  List<XFile> _createPostImages = <XFile>[];
-  XFile? _createPostVideo;
+  List<_SelectedMediaFile> _createPostImages = <_SelectedMediaFile>[];
+  _SelectedMediaFile? _createPostVideo;
   static const Duration _maxVideoDuration = Duration(seconds: 21);
 
   final TextEditingController _titleController = TextEditingController();
@@ -145,8 +145,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(image.path),
+                          child: Image.memory(
+                            image.bytes,
                             height: 110,
                             width: 110,
                             fit: BoxFit.cover,
@@ -173,6 +173,21 @@ class _TestPostsPageState extends State<TestPostsPage> {
                             ),
                           ),
                         ),
+                        Positioned(
+                          left: 4,
+                          right: 4,
+                          bottom: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            color: Colors.black54,
+                            child: Text(
+                              image.fileName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                          ),
+                        ),
                       ],
                     );
                   },
@@ -185,7 +200,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                       ? null
                       : () {
                           setState(() {
-                            _createPostImages = <XFile>[];
+                            _createPostImages = <_SelectedMediaFile>[];
                           });
                         },
                   icon: const Icon(Icons.delete_outline),
@@ -195,7 +210,15 @@ class _TestPostsPageState extends State<TestPostsPage> {
             ],
             if (_createPostVideo != null) ...[
               const SizedBox(height: 8),
-              _LocalVideoPreview(videoFile: File(_createPostVideo!.path)),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('Vidéo sélectionnée: ${_createPostVideo!.fileName}'),
+              ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -381,7 +404,16 @@ class _TestPostsPageState extends State<TestPostsPage> {
     try {
       final uploadedMedia = <Media>[];
       for (final selectedImage in selectedImages) {
-        final media = await _mediaRepository.uploadMedia(postId: postId, mediaFile: File(selectedImage.path));
+        final selectedFile = await _toSelectedMediaFile(selectedImage);
+        Media? media;
+        if (selectedFile != null) {
+          media = await _mediaRepository.uploadMedia(
+            postId: postId,
+            mediaBytes: selectedFile.bytes,
+            fileName: selectedFile.fileName,
+            mimeType: selectedFile.mimeType,
+          );
+        }
         if (media != null) {
           uploadedMedia.add(media);
         }
@@ -418,19 +450,23 @@ class _TestPostsPageState extends State<TestPostsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: mediaList.map((media) {
-        final isVideo = _isVideoUrl(media.url);
+        final isVideo = _isVideoMedia(media);
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: isVideo
-              ? _NetworkVideoPlayer(url: media.url)
+              ? _NetworkVideoPlayer(
+                  url: media.url,
+                  headers: ApiClient.mediaRequestHeaders(),
+                )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
                     media.url,
+                    headers: ApiClient.mediaRequestHeaders(),
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
+                    errorBuilder: (_, _, _) {
                       return const Padding(
                         padding: EdgeInsets.all(8),
                         child: Text('Impossible de charger l\'image.'),
@@ -461,7 +497,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
         if (created == null) {
           _showMessage('Création échouée.');
         } else {
-          final selectedImages = List<XFile>.from(_createPostImages);
+          final selectedImages = List<_SelectedMediaFile>.from(_createPostImages);
           final selectedVideo = _createPostVideo;
           var uploadedCount = 0;
           var uploadFailed = false;
@@ -470,7 +506,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
             try {
               final uploadedMedia = await _mediaRepository.uploadMedia(
                 postId: created.id,
-                mediaFile: File(selectedImage.path),
+                mediaBytes: selectedImage.bytes,
+                fileName: selectedImage.fileName,
+                mimeType: selectedImage.mimeType,
               );
               if (uploadedMedia != null) {
                 uploadedCount++;
@@ -486,7 +524,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
             try {
               final uploadedMedia = await _mediaRepository.uploadMedia(
                 postId: created.id,
-                mediaFile: File(selectedVideo.path),
+                mediaBytes: selectedVideo.bytes,
+                fileName: selectedVideo.fileName,
+                mimeType: selectedVideo.mimeType,
               );
               if (uploadedMedia != null) {
                 uploadedCount++;
@@ -510,7 +550,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
           _contentController.clear();
           if (mounted) {
             setState(() {
-              _createPostImages = <XFile>[];
+              _createPostImages = <_SelectedMediaFile>[];
               _createPostVideo = null;
             });
           }
@@ -519,7 +559,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
             if (uploadFailed) {
               _showMessage('Post créé, mais l\'upload de certains médias a échoué.');
             } else {
-              _showMessage('Post et ${uploadedCount} média(s) créés avec succès.');
+              _showMessage('Post et $uploadedCount média(s) créés avec succès.');
             }
           } else {
             _showMessage('Post créé avec succès.');
@@ -545,9 +585,21 @@ class _TestPostsPageState extends State<TestPostsPage> {
       return;
     }
 
+    final selectedMediaFiles = <_SelectedMediaFile>[];
+    for (final file in selectedImages) {
+      final selected = await _toSelectedMediaFile(file);
+      if (selected != null) {
+        selectedMediaFiles.add(selected);
+      }
+    }
+
+    if (selectedMediaFiles.isEmpty) {
+      return;
+    }
+
     if (mounted) {
       setState(() {
-        _createPostImages = <XFile>[..._createPostImages, ...selectedImages];
+        _createPostImages = <_SelectedMediaFile>[..._createPostImages, ...selectedMediaFiles];
       });
     }
   }
@@ -562,15 +614,14 @@ class _TestPostsPageState extends State<TestPostsPage> {
       return;
     }
 
-    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
-    if (!isValidDuration) {
-      _showMessage('La vidéo doit durer 21 secondes maximum.');
+    final selected = await _toSelectedMediaFile(selectedVideo);
+    if (selected == null) {
       return;
     }
 
     if (mounted) {
       setState(() {
-        _createPostVideo = selectedVideo;
+        _createPostVideo = selected;
       });
     }
   }
@@ -584,9 +635,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
       return;
     }
 
-    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
-    if (!isValidDuration) {
-      _showMessage('La vidéo doit durer 21 secondes maximum.');
+    final selected = await _toSelectedMediaFile(selectedVideo);
+    if (selected == null) {
       return;
     }
 
@@ -595,7 +645,12 @@ class _TestPostsPageState extends State<TestPostsPage> {
     });
 
     try {
-      final media = await _mediaRepository.uploadMedia(postId: postId, mediaFile: File(selectedVideo.path));
+      final media = await _mediaRepository.uploadMedia(
+        postId: postId,
+        mediaBytes: selected.bytes,
+        fileName: selected.fileName,
+        mimeType: selected.mimeType,
+      );
 
       if (media == null) {
         _showMessage('Upload vidéo échoué.');
@@ -618,21 +673,59 @@ class _TestPostsPageState extends State<TestPostsPage> {
     }
   }
 
-  Future<bool> _isVideoWithinMaxDuration(File videoFile) async {
-    final controller = VideoPlayerController.file(videoFile);
+  Future<_SelectedMediaFile?> _toSelectedMediaFile(XFile file) async {
+    _SelectedMediaFile? selected;
     try {
-      await controller.initialize();
-      final duration = controller.value.duration;
-      return duration <= _maxVideoDuration;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        selected = null;
+      } else {
+        final name = file.name.isEmpty ? 'upload.bin' : file.name;
+        selected = _SelectedMediaFile(
+          bytes: bytes,
+          fileName: name,
+          mimeType: _resolveMimeType(name, file.mimeType),
+        );
+      }
     } catch (_) {
-      return false;
-    } finally {
-      await controller.dispose();
+      selected = null;
     }
+    return selected;
   }
 
-  bool _isVideoUrl(String url) {
-    final normalizedPath = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+  String _resolveMimeType(String fileName, String? mimeType) {
+    final normalized = mimeType?.trim().toLowerCase();
+    if (normalized != null && normalized.isNotEmpty && normalized.contains('/')) {
+      return normalized;
+    }
+
+    final lowerName = fileName.toLowerCase();
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.gif')) return 'image/gif';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+    if (lowerName.endsWith('.bmp')) return 'image/bmp';
+    if (lowerName.endsWith('.svg')) return 'image/svg+xml';
+    if (lowerName.endsWith('.mp4')) return 'video/mp4';
+    if (lowerName.endsWith('.mov')) return 'video/quicktime';
+    if (lowerName.endsWith('.webm')) return 'video/webm';
+    if (lowerName.endsWith('.m4v')) return 'video/x-m4v';
+    if (lowerName.endsWith('.avi')) return 'video/x-msvideo';
+    if (lowerName.endsWith('.mkv')) return 'video/x-matroska';
+    return 'application/octet-stream';
+  }
+
+  bool _isVideoMedia(Media media) {
+    final normalizedLabel = media.labelMedia?.trim().toLowerCase();
+    if (normalizedLabel == 'video') {
+      return true;
+    }
+    if (normalizedLabel == 'image' || normalizedLabel == 'audio') {
+      return false;
+    }
+
+    final candidate = media.publicId != null && media.publicId!.isNotEmpty ? media.publicId! : media.url;
+    final normalizedPath = Uri.tryParse(candidate)?.path.toLowerCase() ?? candidate.toLowerCase();
     return normalizedPath.endsWith('.mp4') ||
         normalizedPath.endsWith('.mov') ||
         normalizedPath.endsWith('.webm') ||
@@ -665,81 +758,26 @@ class _TestPostsPageState extends State<TestPostsPage> {
   }
 }
 
-class _LocalVideoPreview extends StatefulWidget {
-  final File videoFile;
+class _SelectedMediaFile {
+  final Uint8List bytes;
+  final String fileName;
+  final String mimeType;
 
-  const _LocalVideoPreview({required this.videoFile});
-
-  @override
-  State<_LocalVideoPreview> createState() => _LocalVideoPreviewState();
-}
-
-class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
-  late final VideoPlayerController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.file(widget.videoFile)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_controller.value.isInitialized) {
-      return const SizedBox(
-        height: 180,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: AspectRatio(
-        aspectRatio: _controller.value.aspectRatio,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            VideoPlayer(_controller),
-            CircleAvatar(
-              backgroundColor: Colors.black54,
-              child: IconButton(
-                icon: Icon(
-                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (_controller.value.isPlaying) {
-                      _controller.pause();
-                    } else {
-                      _controller.play();
-                    }
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  _SelectedMediaFile({
+    required this.bytes,
+    required this.fileName,
+    required this.mimeType,
+  });
 }
 
 class _NetworkVideoPlayer extends StatefulWidget {
   final String url;
+  final Map<String, String> headers;
 
-  const _NetworkVideoPlayer({required this.url});
+  const _NetworkVideoPlayer({
+    required this.url,
+    this.headers = const <String, String>{},
+  });
 
   @override
   State<_NetworkVideoPlayer> createState() => _NetworkVideoPlayerState();
@@ -751,7 +789,10 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(widget.url),
+      httpHeaders: widget.headers,
+    )
       ..initialize().then((_) {
         if (mounted) {
           setState(() {});

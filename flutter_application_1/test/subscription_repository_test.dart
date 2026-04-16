@@ -10,6 +10,7 @@ class _FakeSubscriptionApiClient extends ApiClient {
   @override
   Future<dynamic> get(
     String endpoint, {
+    Map<String, String>? headers,
     bool includeAuthorization = true,
   }) async {
     if (!responsesByEndpoint.containsKey(endpoint)) {

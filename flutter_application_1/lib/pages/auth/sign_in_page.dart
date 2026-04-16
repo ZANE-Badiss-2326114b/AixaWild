@@ -136,7 +136,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     }
 
     return DropdownButtonFormField<SubscriptionType>(
-      value: selectedValue,
+      initialValue: selectedValue,
       decoration: const InputDecoration(
         labelText: 'Type d\'abonnement',
         border: OutlineInputBorder(),

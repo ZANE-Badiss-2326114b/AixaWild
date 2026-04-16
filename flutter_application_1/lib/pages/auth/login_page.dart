@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/api/auth/auth_token_manager.dart';
 import '../../data/api/api_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/repositories/user_repository.dart';
@@ -150,7 +151,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     });
 
     if (!isAuthenticated) {
-      ApiClient.clearCredentials();
+        await AuthTokenManager.instance.clearToken();
       if (loginError != null && loginError.isNotEmpty) {
         _showMessage('Connexion impossible: $loginError');
       } else {
