@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import '../database/my_database.dart';
-import '../database/tables/user_table.dart';
+import 'package:flutter_application_1/data/database/my_database.dart';
+import 'package:flutter_application_1/data/database/tables/user_table.dart';
 
 part 'user_dao.g.dart';
 

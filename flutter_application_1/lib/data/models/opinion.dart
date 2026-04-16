@@ -1,4 +1,4 @@
-import '../utils/json_parser.dart';
+import 'package:flutter_application_1/data/utils/json_parser.dart';
 
 class Opinion {
 	final String userEmail;

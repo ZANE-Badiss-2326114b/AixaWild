@@ -1,5 +1,5 @@
-import '../utils/json_parser.dart';
-import 'subscription_type.dart';
+import 'package:flutter_application_1/data/models/subscription_type.dart';
+import 'package:flutter_application_1/data/utils/json_parser.dart';
 
 class Subscription {
   final String currentTypeLabel;
