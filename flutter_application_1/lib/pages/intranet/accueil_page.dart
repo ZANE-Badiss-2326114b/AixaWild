@@ -204,10 +204,20 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           Row(
             children: [
               // Bouton Carte
-              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte), child: _buildQuickAction(Icons.map, 'Carte', Colors.blue)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte),
+                  child: _buildQuickAction(Icons.map, 'Carte', Colors.blue),
+                ),
+              ),
               const SizedBox(width: 15),
               // Bouton Mes fiches
-              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches), child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches),
+                  child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -253,24 +263,22 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   }
 
   Widget _buildQuickAction(IconData icon, String label, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

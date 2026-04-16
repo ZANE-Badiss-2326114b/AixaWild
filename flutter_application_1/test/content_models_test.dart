@@ -39,6 +39,22 @@ void main() {
       expect(post.authorEmail, 'bob@example.com');
       expect(post.likesCount, 2);
     });
+
+    test('maps optional location payload', () {
+      final post = Post.fromJson({
+        'id': 12,
+        'authorEmail': 'carol@example.com',
+        'title': 'Rencontre',
+        'locationName': 'Parc Jourdan',
+        'latitude': 43.5232,
+        'longitude': 5.4475,
+      });
+
+      expect(post.locationName, 'Parc Jourdan');
+      expect(post.latitude, closeTo(43.5232, 0.0001));
+      expect(post.longitude, closeTo(5.4475, 0.0001));
+      expect(post.hasLocation, isTrue);
+    });
   });
 
   group('Opinion.fromJson', () {
