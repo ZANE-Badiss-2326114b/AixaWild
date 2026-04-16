@@ -1,48 +1,44 @@
 import 'dart:convert';
-import 'dart:io';
-//import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
+import 'package:http_parser/http_parser.dart';
 
-class ApiClient {
-  
+import 'package:flutter_application_1/data/api/auth/auth_token_manager.dart';
+import 'package:flutter_application_1/data/api/core/api_interface.dart';
 
-  //final String baseUrl = "https://api-7e6i.onrender.com/api";
+class ApiClient implements IApiClient {
+  static const String _defaultApiBaseUrl = 'http://localhost:8080/api';
+  static const String _configuredApiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: _defaultApiBaseUrl,
+  );
 
-  final String baseUrl = "http://localhost:8080/api";
-  static String? _sessionEmail;
-  static String? _sessionPassword;
+  ApiClient({
+    AuthTokenManager? authTokenManager,
+    this.baseUrl = _configuredApiBaseUrl,
+  }) : _authTokenManager = authTokenManager ?? AuthTokenManager.instance;
 
-  static void setCredentials({
-    required String email,
-    required String password,
-  }) {
-    _sessionEmail = email.trim();
-    _sessionPassword = password;
+  final String baseUrl;
+  final AuthTokenManager _authTokenManager;
+
+  static String buildBasicAuthorizationHeader(String email, String password) {
+    final credentials = '${email.trim()}:$password';
+    return 'Basic ${base64Encode(utf8.encode(credentials))}';
   }
 
-  static void clearCredentials() {
-    _sessionEmail = null;
-    _sessionPassword = null;
-  }
-
-  String? get _auth {
-    final email = _sessionEmail;
-    final password = _sessionPassword;
-    String? auth;
-
-    if (email == null || email.isEmpty || password == null) {
-      auth = null;
-    } else {
-      final credentials = '$email:$password';
-      auth = 'Basic ${base64Encode(utf8.encode(credentials))}';
+  static Map<String, String> mediaRequestHeaders() {
+    final token = AuthTokenManager.instance.cachedToken;
+    if (token == null || token.isEmpty) {
+      return const <String, String>{};
     }
-
-    return auth;
+    return <String, String>{
+      'Authorization': 'Bearer $token',
+    };
   }
 
-  Map<String, String> _buildHeaders({
+  Future<Map<String, String>> _buildHeaders({
     bool includeAuthorization = true,
+    Map<String, String>? extraHeaders,
   }) {
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -50,97 +46,191 @@ class ApiClient {
       'User-Agent': 'Flutter-Aixawild',
     };
 
-    if (includeAuthorization) {
-      final auth = _auth;
-      if (auth != null) {
-        headers['Authorization'] = auth;
-      }
+    return _injectAuthorizationIfNeeded(
+      headers,
+      includeAuthorization: includeAuthorization,
+      extraHeaders: extraHeaders,
+    );
+  }
+
+  Future<Map<String, String>> _injectAuthorizationIfNeeded(
+    Map<String, String> baseHeaders, {
+    required bool includeAuthorization,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final headers = <String, String>{...baseHeaders};
+    if (extraHeaders != null && extraHeaders.isNotEmpty) {
+      headers.addAll(extraHeaders);
+    }
+
+    if (!includeAuthorization || headers.containsKey('Authorization')) {
+      return headers;
+    }
+
+    final token = await _authTokenManager.getToken();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
 
     return headers;
+  }
+
+  Future<void> _captureJwtFromHeaders(Map<String, String> headers) async {
+    final authorization =
+        headers['authorization'] ?? headers['Authorization'] ?? '';
+    if (!authorization.toLowerCase().startsWith('bearer ')) {
+      return;
+    }
+
+    final token = authorization.substring('Bearer '.length).trim();
+    if (token.isNotEmpty) {
+      await _authTokenManager.saveToken(token);
+    }
+  }
+
+  Future<void> clearAuthToken() async {
+    await _authTokenManager.clearToken();
+  }
+
+  Future<void> saveAuthToken(String token) async {
+    await _authTokenManager.saveToken(token);
+  }
+
+  String? getCachedAuthToken() {
+    return _authTokenManager.cachedToken;
   }
 
   String _buildUrl(String endpoint) {
     return endpoint.startsWith('/') ? '$baseUrl$endpoint' : '$baseUrl/$endpoint';
   }
 
+  @override
   Future<dynamic> get(
     String endpoint, {
+    Map<String, String>? headers,
     bool includeAuthorization = true,
   }) async {
     final url = _buildUrl(endpoint);
     final response = await http.get(
       Uri.parse(url),
-      headers: _buildHeaders(includeAuthorization: includeAuthorization),
+      headers: await _buildHeaders(
+        includeAuthorization: includeAuthorization,
+        extraHeaders: headers,
+      ),
     );
     return _handleResponse(response);
   }
 
+  @override
   Future<dynamic> post(
     String endpoint,
-    Map<String, dynamic> data, {
+    dynamic data, {
+    Map<String, String>? headers,
     bool includeAuthorization = true,
   }) async {
     final url = _buildUrl(endpoint);
     final response = await http.post(
-      Uri.parse(url), 
-      headers: _buildHeaders(includeAuthorization: includeAuthorization), 
-      body: jsonEncode(data)
-    );
-    return _handleResponse(response);
-  }
-
-  Future<dynamic> put(
-    String endpoint,
-    Map<String, dynamic> data, {
-    bool includeAuthorization = true,
-  }) async {
-    final url = _buildUrl(endpoint);
-    final response = await http.put(
       Uri.parse(url),
-      headers: _buildHeaders(includeAuthorization: includeAuthorization),
+      headers: await _buildHeaders(
+        includeAuthorization: includeAuthorization,
+        extraHeaders: headers,
+      ),
       body: jsonEncode(data),
     );
     return _handleResponse(response);
   }
 
+  @override
+  Future<dynamic> put(
+    String endpoint,
+    dynamic data, {
+    Map<String, String>? headers,
+    bool includeAuthorization = true,
+  }) async {
+    final url = _buildUrl(endpoint);
+    final response = await http.put(
+      Uri.parse(url),
+      headers: await _buildHeaders(
+        includeAuthorization: includeAuthorization,
+        extraHeaders: headers,
+      ),
+      body: jsonEncode(data),
+    );
+    return _handleResponse(response);
+  }
+
+  @override
   Future<dynamic> delete(
     String endpoint, {
+    Map<String, String>? headers,
     bool includeAuthorization = true,
   }) async {
     final url = _buildUrl(endpoint);
     final response = await http.delete(
       Uri.parse(url),
-      headers: _buildHeaders(includeAuthorization: includeAuthorization),
+      headers: await _buildHeaders(
+        includeAuthorization: includeAuthorization,
+        extraHeaders: headers,
+      ),
     );
+    return _handleResponse(response);
+  }
+
+  @override
+  Future<dynamic> upload(
+    String endpoint,
+    List<int> bytes, {
+    required String fileName,
+    String? mimeType,
+    Map<String, String>? headers,
+    bool includeAuthorization = true,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    onSendProgress?.call(0, bytes.length);
+    final request = http.MultipartRequest('POST', Uri.parse(_buildUrl(endpoint)));
+    final requestHeaders = await _buildHeaders(
+      includeAuthorization: includeAuthorization,
+      extraHeaders: headers,
+    );
+    requestHeaders.remove('Content-Type');
+    request.headers.addAll(requestHeaders);
+
+    final resolvedMimeType = _resolveMimeType(fileName, mimeType);
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType.parse(resolvedMimeType),
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    onSendProgress?.call(bytes.length, bytes.length);
+    final response = await http.Response.fromStream(streamedResponse);
     return _handleResponse(response);
   }
 
   Future<dynamic> uploadMedia(
     int postId,
-    File mediaFile, {
+    Uint8List mediaBytes, {
+    required String fileName,
+    String? mimeType,
     bool includeAuthorization = true,
   }) async {
-    final endpoint = '/posts/$postId/media';
-    final request = http.MultipartRequest('POST', Uri.parse(_buildUrl(endpoint)));
-    final headers = _buildHeaders(includeAuthorization: includeAuthorization);
-    headers.remove('Content-Type');
-    request.headers.addAll(headers);
-
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'file',
-        mediaFile.path,
-        filename: path.basename(mediaFile.path),
-      ),
+    return upload(
+      '/posts/$postId/media',
+      mediaBytes,
+      fileName: fileName,
+      mimeType: mimeType,
+      includeAuthorization: includeAuthorization,
     );
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    return _handleResponse(response);
   }
 
-  dynamic _handleResponse(http.Response response) {
+  Future<dynamic> _handleResponse(http.Response response) async {
+    await _captureJwtFromHeaders(response.headers);
+
     dynamic result;
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -149,10 +239,34 @@ class ApiClient {
       } else {
         result = null;
       }
-    } else {
+    }
+
+    else {
       throw Exception('Erreur API (${response.statusCode}): ${response.body}');
     }
 
     return result;
+  }
+
+  String _resolveMimeType(String fileName, String? mimeType) {
+    final normalized = mimeType?.trim().toLowerCase();
+    if (normalized != null && normalized.isNotEmpty && normalized.contains('/')) {
+      return normalized;
+    }
+
+    final lowerName = fileName.toLowerCase();
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.gif')) return 'image/gif';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+    if (lowerName.endsWith('.bmp')) return 'image/bmp';
+    if (lowerName.endsWith('.svg')) return 'image/svg+xml';
+    if (lowerName.endsWith('.mp4')) return 'video/mp4';
+    if (lowerName.endsWith('.mov')) return 'video/quicktime';
+    if (lowerName.endsWith('.webm')) return 'video/webm';
+    if (lowerName.endsWith('.m4v')) return 'video/x-m4v';
+    if (lowerName.endsWith('.avi')) return 'video/x-msvideo';
+    if (lowerName.endsWith('.mkv')) return 'video/x-matroska';
+    return 'application/octet-stream';
   }
 }
