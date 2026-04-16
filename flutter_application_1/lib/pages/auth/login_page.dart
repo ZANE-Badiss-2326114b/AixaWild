@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/api/auth/auth_token_manager.dart';
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../shared/navigation/app_routes.dart';
@@ -26,7 +26,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
   @override
   void initState() {
     super.initState();
-    _userRepository = UserRepository(ApiClient(), _database.userDao);
+    _userRepository = UserRepository(DioApiClient(), _database.userDao);
   }
 
   @override
@@ -61,27 +61,14 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
   Widget _buildBody(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
-          _buildEmailField(_emailController),
-          const SizedBox(height: 16),
-          _buildPasswordField(_passwordController),
-          const SizedBox(height: 24),
-          _buildLoginButton(context),
-          _buildCreateAccountButton(context),
-        ],
-      ),
+      child: Column(children: [const SizedBox(height: 20), _buildEmailField(_emailController), const SizedBox(height: 16), _buildPasswordField(_passwordController), const SizedBox(height: 24), _buildLoginButton(context), _buildCreateAccountButton(context)]),
     );
   }
 
   Widget _buildEmailField(TextEditingController controller) {
     return TextField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: 'Email',
-        border: OutlineInputBorder(),
-      ),
+      decoration: InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
     );
   }
 
@@ -89,10 +76,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     return TextField(
       controller: controller,
       obscureText: true,
-      decoration: const InputDecoration(
-        labelText: 'Mot de passe',
-        border: OutlineInputBorder(),
-      ),
+      decoration: const InputDecoration(labelText: 'Mot de passe', border: OutlineInputBorder()),
     );
   }
 
@@ -101,13 +85,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isLoading ? null : () => _onLoginPressed(context),
-        child: _isLoading
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Text('Se connecter'),
+        child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Se connecter'),
       ),
     );
   }
@@ -151,7 +129,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     });
 
     if (!isAuthenticated) {
-        await AuthTokenManager.instance.clearToken();
+      await AuthTokenManager.instance.clearToken();
       if (loginError != null && loginError.isNotEmpty) {
         _showMessage('Connexion impossible: $loginError');
       } else {
@@ -160,16 +138,10 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
       return;
     }
 
-    Navigator.pushReplacementNamed(
-      context,
-      AppRoutes.intranetAccueil,
-      arguments: email,
-    );
+    Navigator.pushReplacementNamed(context, AppRoutes.intranetAccueil, arguments: email);
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }

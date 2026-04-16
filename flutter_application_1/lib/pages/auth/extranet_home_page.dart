@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/models/subscription.dart';
 import '../../data/models/subscription_type.dart';
 import '../../data/repositories/subscription_repository.dart';
@@ -14,8 +14,7 @@ class HomeExtranetPage extends StatefulWidget {
 }
 
 class _HomeExtranetPageState extends State<HomeExtranetPage> {
-  final SubscriptionRepository _subscriptionRepository =
-      SubscriptionRepository(ApiClient());
+  final SubscriptionRepository _subscriptionRepository = SubscriptionRepository(DioApiClient());
 
   late Future<SubscriptionDashboardData> _dashboardFuture;
   String _userEmail = '';
@@ -55,10 +54,7 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Text(
-                'Impossible de charger les abonnements pour $_userEmail.',
-                textAlign: TextAlign.center,
-              ),
+              child: Text('Impossible de charger les abonnements pour $_userEmail.', textAlign: TextAlign.center),
             ),
           );
         }
@@ -70,19 +66,7 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
 
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
-            children: [
-              _buildTitle(),
-              const SizedBox(height: 8),
-              _buildSubtitle(),
-              const SizedBox(height: 24),
-              _buildCurrentSubscriptionCard(data.currentSubscription),
-              const SizedBox(height: 16),
-              _buildAvailableTypesCard(data.availableTypes),
-            ],
-          ),
+          child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(20), children: [_buildTitle(), const SizedBox(height: 8), _buildSubtitle(), const SizedBox(height: 24), _buildCurrentSubscriptionCard(data.currentSubscription), const SizedBox(height: 16), _buildAvailableTypesCard(data.availableTypes)]),
         );
       },
     );
@@ -96,17 +80,11 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
   }
 
   Widget _buildTitle() {
-    return const Text(
-      'Bienvenue sur l’extranet',
-      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-    );
+    return const Text('Bienvenue sur l’extranet', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold));
   }
 
   Widget _buildSubtitle() {
-    return Text(
-      'Accédez rapidement à vos actions principales.',
-      style: TextStyle(color: Colors.grey[700]),
-    );
+    return Text('Accédez rapidement à vos actions principales.', style: TextStyle(color: Colors.grey[700]));
   }
 
   Widget _buildCurrentSubscriptionCard(Subscription? current) {
@@ -116,21 +94,9 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Abonnement actuel',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            const Text('Abonnement actuel', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
-            if (current == null)
-              const Text('Aucun abonnement actuel trouvé pour cet utilisateur.')
-            else ...[
-              Text('Type : ${current.currentTypeLabel}'),
-              if (current.status != null) Text('Statut : ${current.status}'),
-              if (current.startDate != null)
-                Text('Début : ${_formatDate(current.startDate!)}'),
-              if (current.endDate != null)
-                Text('Fin : ${_formatDate(current.endDate!)}'),
-            ],
+            if (current == null) const Text('Aucun abonnement actuel trouvé pour cet utilisateur.') else ...[Text('Type : ${current.currentTypeLabel}'), if (current.status != null) Text('Statut : ${current.status}'), if (current.startDate != null) Text('Début : ${_formatDate(current.startDate!)}'), if (current.endDate != null) Text('Fin : ${_formatDate(current.endDate!)}')],
           ],
         ),
       ),
@@ -144,15 +110,9 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Types d’abonnement disponibles',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            const Text('Types d’abonnement disponibles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
-            if (types.isEmpty)
-              const Text('Aucun type d’abonnement disponible.')
-            else
-              ...types.map(_buildTypeLine),
+            if (types.isEmpty) const Text('Aucun type d’abonnement disponible.') else ...types.map(_buildTypeLine),
           ],
         ),
       ),
@@ -160,14 +120,9 @@ class _HomeExtranetPageState extends State<HomeExtranetPage> {
   }
 
   Widget _buildTypeLine(SubscriptionType type) {
-    final text = type.description != null && type.description!.isNotEmpty
-        ? '${type.name} - ${type.description}'
-        : type.name;
+    final text = type.description != null && type.description!.isNotEmpty ? '${type.name} - ${type.description}' : type.name;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Text(text),
-    );
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Text(text));
   }
 
   String _formatDate(DateTime date) {

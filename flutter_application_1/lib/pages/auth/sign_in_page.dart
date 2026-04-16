@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/models/subscription_type.dart';
 import '../../data/repositories/subscription_repository.dart';
@@ -16,12 +16,7 @@ class SignInExtranetPage extends StatefulWidget {
 }
 
 class _SignInExtranetPageState extends State<SignInExtranetPage> {
-  static final SubscriptionType _freeType = SubscriptionType(
-    id: null,
-    name: 'Free',
-    description: 'Aucun abonnement',
-    price: null,
-  );
+  static final SubscriptionType _freeType = SubscriptionType(id: null, name: 'Free', description: 'Aucun abonnement', price: null);
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -38,7 +33,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
   @override
   void initState() {
     super.initState();
-    final apiClient = ApiClient();
+    final apiClient = DioApiClient();
     _userRepository = UserRepository(apiClient, _database.userDao);
     _subscriptionRepository = SubscriptionRepository(apiClient);
     _subscriptionTypesFuture = _loadSubscriptionTypes();
@@ -69,20 +64,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              _buildNameField(),
-              const SizedBox(height: 16),
-              _buildEmailField(),
-              const SizedBox(height: 16),
-              _buildPasswordField(),
-              const SizedBox(height: 16),
-              _buildSubscriptionDropdown(options),
-              const SizedBox(height: 24),
-              _buildSubmitButton(context),
-            ],
-          ),
+          child: Column(children: [const SizedBox(height: 20), _buildNameField(), const SizedBox(height: 16), _buildEmailField(), const SizedBox(height: 16), _buildPasswordField(), const SizedBox(height: 16), _buildSubscriptionDropdown(options), const SizedBox(height: 24), _buildSubmitButton(context)]),
         );
       },
     );
@@ -124,11 +106,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     final allOptions = <SubscriptionType>[_freeType, ...options];
 
     SubscriptionType selectedValue;
-    final alreadyExists = allOptions.any(
-      (type) =>
-          type.name.trim().toLowerCase() ==
-          _selectedType.name.trim().toLowerCase(),
-    );
+    final alreadyExists = allOptions.any((type) => type.name.trim().toLowerCase() == _selectedType.name.trim().toLowerCase());
     if (alreadyExists) {
       selectedValue = _selectedType;
     } else {
@@ -137,18 +115,8 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
 
     return DropdownButtonFormField<SubscriptionType>(
       initialValue: selectedValue,
-      decoration: const InputDecoration(
-        labelText: 'Type d\'abonnement',
-        border: OutlineInputBorder(),
-      ),
-      items: allOptions
-          .map(
-            (type) => DropdownMenuItem<SubscriptionType>(
-              value: type,
-              child: Text(type.name),
-            ),
-          )
-          .toList(),
+      decoration: const InputDecoration(labelText: 'Type d\'abonnement', border: OutlineInputBorder()),
+      items: allOptions.map((type) => DropdownMenuItem<SubscriptionType>(value: type, child: Text(type.name))).toList(),
       onChanged: (value) {
         if (value != null) {
           setState(() {
@@ -198,12 +166,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
     });
 
     try {
-      await _userRepository.createUser(
-        email,
-        name,
-        password,
-        typeName: _selectedType.name,
-      );
+      await _userRepository.createUser(email, name, password, typeName: _selectedType.name);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.extranetLogin, arguments: email);

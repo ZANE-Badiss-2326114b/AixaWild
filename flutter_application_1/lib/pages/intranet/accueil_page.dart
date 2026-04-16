@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/post_repository.dart';
@@ -25,7 +25,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   @override
   void initState() {
     super.initState();
-    _postRepository = PostRepository(ApiClient());
+    _postRepository = PostRepository(DioApiClient());
   }
 
   @override
@@ -62,20 +62,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   }
 
   Widget _buildBody(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          _buildUserGreetingHeader(),
-          const SizedBox(height: 20),
-          _buildWelcomeHeader(),
-          const SizedBox(height: 20),
-          _buildQuickActionsRow(context),
-          const SizedBox(height: 30),
-          _buildDiscoveriesHeader(),
-          _buildPostsSection(),
-        ],
-      ),
-    );
+    return SingleChildScrollView(child: Column(children: [_buildUserGreetingHeader(), const SizedBox(height: 20), _buildWelcomeHeader(), const SizedBox(height: 20), _buildQuickActionsRow(context), const SizedBox(height: 30), _buildDiscoveriesHeader(), _buildPostsSection()]));
   }
 
   Widget _buildPostsSection() {
@@ -90,28 +77,17 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
         }
 
         if (snapshot.hasError) {
-          return const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text('Impossible de charger les posts.'),
-          );
+          return const Padding(padding: EdgeInsets.all(20), child: Text('Impossible de charger les posts.'));
         }
 
         final posts = snapshot.data ?? <Post>[];
         if (posts.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text('Aucune découverte pour le moment.'),
-          );
+          return const Padding(padding: EdgeInsets.all(20), child: Text('Aucune découverte pour le moment.'));
         }
 
         return Column(
           children: posts.take(10).map((post) {
-            return _buildObservationItem(
-              post.title,
-              post.content ?? 'Observation',
-              _formatRelativeDate(post.createdAt),
-              Icons.pets,
-            );
+            return _buildObservationItem(post.title, post.content ?? 'Observation', _formatRelativeDate(post.createdAt), Icons.pets);
           }).toList(),
         );
       },
@@ -175,36 +151,19 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Bonjour,',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                ),
-              ),
+              Text('Bonjour,', style: TextStyle(fontSize: 16, color: Colors.grey[700])),
               const SizedBox(height: 8),
               Text(
                 displayedName,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(20)),
                 child: Text(
                   'Abonnement: $typeLabel',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue[900],
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.blue[900], fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -220,31 +179,18 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.green[800],
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
       ),
       child: const Column(
         children: [
-          Text(
-            'Bienvenue à Aix-en-Provence',
-            style: TextStyle(color: Colors.white70),
-          ),
+          Text('Bienvenue à Aix-en-Provence', style: TextStyle(color: Colors.white70)),
           SizedBox(height: 10),
           Text(
             '12 Observations',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 5),
-          Text(
-            'cette semaine',
-            style: TextStyle(color: Colors.white60),
-          ),
+          Text('cette semaine', style: TextStyle(color: Colors.white60)),
         ],
       ),
     );
@@ -258,16 +204,10 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           Row(
             children: [
               // Bouton Carte
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte),
-                child: _buildQuickAction(Icons.map, 'Carte', Colors.blue),
-              ),
+              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte), child: _buildQuickAction(Icons.map, 'Carte', Colors.blue)),
               const SizedBox(width: 15),
               // Bouton Mes fiches
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches),
-                child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
-              ),
+              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches), child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange)),
             ],
           ),
           const SizedBox(height: 12),
@@ -276,11 +216,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.intranetTestPosts,
-                  arguments: _userEmail,
-                );
+                Navigator.pushNamed(context, AppRoutes.intranetTestPosts, arguments: _userEmail);
               },
               icon: const Icon(Icons.science_outlined),
               label: const Text('Page test Posts & Likes'),
@@ -297,10 +233,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Dernières découvertes',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const Text('Dernières découvertes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           TextButton(onPressed: () {}, child: const Text('Voir tout')),
         ],
       ),
@@ -310,11 +243,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   Widget _buildFloatingActionButton(BuildContext context) {
     return FloatingActionButton.extended(
       onPressed: () {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.intranetFormulaire,
-          arguments: _userEmail,
-        );
+        Navigator.pushNamed(context, AppRoutes.intranetFormulaire, arguments: _userEmail);
       },
       label: const Text('Recenser'),
       icon: const Icon(Icons.add_a_photo),
@@ -346,12 +275,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
     );
   }
 
-  Widget _buildObservationItem(
-    String titre,
-    String sousTitre,
-    String date,
-    IconData icon,
-  ) {
+  Widget _buildObservationItem(String titre, String sousTitre, String date, IconData icon) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Colors.green[100],
@@ -359,10 +283,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       ),
       title: Text(titre, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(sousTitre),
-      trailing: Text(
-        date,
-        style: const TextStyle(color: Colors.grey, fontSize: 12),
-      ),
+      trailing: Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
     );
   }
 }
