@@ -141,7 +141,7 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
         icon: const Icon(Icons.check),
         label: const Text('Enregistrer l\'observation'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF1F6FB2),
           foregroundColor: Colors.white,
         ),
       ),

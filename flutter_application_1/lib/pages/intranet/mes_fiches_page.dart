@@ -66,67 +66,75 @@ class _MesFichesIntranetPageState extends State<MesFichesIntranetPage> {
   }
 
   Widget _buildSpeciesRanking() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1,
-      ),
-      itemCount: _speciesRanking.length,
-      itemBuilder: (context, index) {
-        final species = _speciesRanking[index];
-        return InkWell(
-          onTap: () {
-            setState(() {
-              _selectedSpecies = species;
-              _selectedNav = 'Récentes';
-            });
-          },
-          borderRadius: BorderRadius.circular(14),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  species.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: Colors.green[100],
-                    child: const Icon(Icons.pets, size: 40),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    color: Colors.black54,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          species.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '#${index + 1}',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            mainAxisExtent: 150,
           ),
-        );
-      },
+          itemCount: _speciesRanking.length,
+          itemBuilder: (context, index) {
+            final species = _speciesRanking[index];
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedSpecies = species;
+                  _selectedNav = 'Récentes';
+                });
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      species.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: Colors.blue[100],
+                        child: const Icon(Icons.pets, size: 36),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        color: Colors.black54,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                species.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '#${index + 1}',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -136,17 +144,20 @@ class _MesFichesIntranetPageState extends State<MesFichesIntranetPage> {
     return Column(
       children: [
         Container(
-          margin: const EdgeInsets.all(12),
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           decoration: BoxDecoration(
             color: Colors.blue[800],
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
+          child: SizedBox(
+            height: 112,
+            child: Row(
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -166,18 +177,19 @@ class _MesFichesIntranetPageState extends State<MesFichesIntranetPage> {
                   ),
                 ),
               ),
-              SizedBox(
-                width: 110,
-                height: 96,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
-                  ),
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
+                child: SizedBox(
+                  width: 96,
+                  height: 112,
                   child: Image.network(_selectedSpecies.imageUrl, fit: BoxFit.cover),
                 ),
               ),
             ],
+          ),
           ),
         ),
         Expanded(
@@ -195,8 +207,8 @@ class _MesFichesIntranetPageState extends State<MesFichesIntranetPage> {
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 120,
-                      height: 80,
+                      width: 92,
+                      height: 64,
                       child: ClipRRect(
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(8),
