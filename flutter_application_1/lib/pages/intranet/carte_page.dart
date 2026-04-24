@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dio/dio.dart';
 
 import '../../data/api/core/dio_client.dart';
 import '../../data/models/post.dart';
@@ -16,13 +17,39 @@ class CarteIntranetPage extends StatefulWidget {
 
 class _CarteIntranetPageState extends State<CarteIntranetPage> {
   late final PostRepository _postRepository;
-  late Future<List<Post>> _postsFuture;
+  late Future<List<_MappedPost>> _postsFuture;
+  final Dio _geocodingDio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 20),
+      headers: const <String, dynamic>{
+        'User-Agent': 'AixaWild-Flutter-Map/1.0',
+      },
+    ),
+  );
+
+  bool _isSeedingPosts = false;
+  String _authorEmail = '';
+  bool _routeInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _postRepository = PostRepository(DioApiClient());
-    _postsFuture = _postRepository.getAllPosts();
+    _postsFuture = _loadMappedPosts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routeInitialized) return;
+
+    final routeArgument = ModalRoute.of(context)?.settings.arguments;
+    if (routeArgument is String) {
+      _authorEmail = routeArgument.trim();
+    }
+
+    _routeInitialized = true;
   }
 
   @override
@@ -31,7 +58,7 @@ class _CarteIntranetPageState extends State<CarteIntranetPage> {
       appBar: intranetAppBar(title: 'AixaWild - Carte'),
       body: RefreshIndicator(
         onRefresh: _refreshPosts,
-        child: FutureBuilder<List<Post>>(
+        child: FutureBuilder<List<_MappedPost>>(
           future: _postsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -56,26 +83,38 @@ class _CarteIntranetPageState extends State<CarteIntranetPage> {
               );
             }
 
-            final posts = snapshot.data ?? <Post>[];
-            final postsWithLocation = posts.where((post) => post.hasLocation).toList();
+            final mappedPosts = snapshot.data ?? <_MappedPost>[];
 
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _HeaderCard(totalPosts: posts.length, locatedPosts: postsWithLocation.length),
+                _HeaderCard(
+                  totalPosts: mappedPosts.length,
+                  locatedPosts: mappedPosts.length,
+                ),
                 const SizedBox(height: 16),
-                if (postsWithLocation.isEmpty)
+                _SeedPostsCard(
+                  isLoading: _isSeedingPosts,
+                  onCreate: _seedPostsWithAddresses,
+                  hasAuthorEmail: _authorEmail.isNotEmpty,
+                ),
+                const SizedBox(height: 16),
+                if (mappedPosts.isEmpty)
                   const _EmptyState(
                     icon: Icons.map_outlined,
                     title: 'Aucun emplacement trouvé',
-                    subtitle: 'Les posts doivent contenir latitude/longitude ou un champ adresse exploitable.',
+                    subtitle:
+                        'Les posts doivent contenir latitude/longitude ou un champ adresse exploitable.',
                   )
                 else ...[
-                  SizedBox(height: 380, child: _PostsMap(posts: postsWithLocation)),
+                  SizedBox(height: 380, child: _PostsMap(posts: mappedPosts)),
                   const SizedBox(height: 16),
-                  const Text('Emplacements liés aux posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Emplacements liés aux posts',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
-                  ...postsWithLocation.map((post) => _PostLocationCard(post: post)),
+                  ...mappedPosts.map((post) => _PostLocationCard(post: post)),
                 ],
               ],
             );
@@ -92,9 +131,227 @@ class _CarteIntranetPageState extends State<CarteIntranetPage> {
 
   Future<void> _refreshPosts() async {
     setState(() {
-      _postsFuture = _postRepository.getAllPosts();
+      _postsFuture = _loadMappedPosts();
     });
     await _postsFuture;
+  }
+
+  Future<List<_MappedPost>> _loadMappedPosts() async {
+    final posts = await _postRepository.getAllPosts();
+    final mapped = <_MappedPost>[];
+
+    for (final post in posts) {
+      final directLat = post.latitude;
+      final directLon = post.longitude;
+      if (directLat != null && directLon != null) {
+        mapped.add(
+          _MappedPost(
+            post: post,
+            latitude: directLat,
+            longitude: directLon,
+            resolvedAddress: post.locationName,
+          ),
+        );
+        continue;
+      }
+
+      final rawAddress = _extractAddress(post);
+      if (rawAddress == null) {
+        continue;
+      }
+
+      final geo = await _geocodeAddress(rawAddress);
+      if (geo != null) {
+        mapped.add(
+          _MappedPost(
+            post: post,
+            latitude: geo.latitude,
+            longitude: geo.longitude,
+            resolvedAddress: rawAddress,
+          ),
+        );
+      } else {
+        final fallback = _getFallbackCoordinates(rawAddress);
+        if (fallback != null) {
+          mapped.add(
+            _MappedPost(
+              post: post,
+              latitude: fallback.latitude,
+              longitude: fallback.longitude,
+              resolvedAddress: rawAddress,
+            ),
+          );
+        }
+      }
+    }
+
+    return mapped;
+  }
+
+  String? _extractAddress(Post post) {
+    if (post.locationName != null && post.locationName!.trim().isNotEmpty) {
+      return post.locationName!.trim();
+    }
+
+    final content = post.content?.trim();
+    if (content == null || content.isEmpty) {
+      return null;
+    }
+
+    for (final pattern in [
+      r'Localisation\s*:\s*(.+)',
+      r'Adresse\s*:\s*(.+)',
+      r'Lieu\s*:\s*(.+)',
+    ]) {
+      final match = RegExp(pattern, caseSensitive: false).firstMatch(content);
+      if (match != null) {
+        final extracted = match.group(1)?.trim();
+        if (extracted != null && extracted.isNotEmpty) {
+          return extracted;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Future<_GeocodedPoint?> _geocodeAddress(String address) async {
+    try {
+      final normalizedAddress = _normalizeAddress(address);
+
+      final fallbackCoords = _getFallbackCoordinates(normalizedAddress);
+      if (fallbackCoords != null) {
+        return fallbackCoords;
+      }
+
+      final response = await _geocodingDio.get<dynamic>(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: <String, dynamic>{
+          'q': normalizedAddress,
+          'format': 'jsonv2',
+          'limit': 1,
+          'countrycodes': 'fr',
+        },
+      );
+
+      final data = response.data;
+      if (data is List &&
+          data.isNotEmpty &&
+          data.first is Map<String, dynamic>) {
+        final row = data.first as Map<String, dynamic>;
+        final lat = double.tryParse((row['lat'] ?? '').toString());
+        final lon = double.tryParse((row['lon'] ?? '').toString());
+        if (lat != null && lon != null) {
+          return _GeocodedPoint(latitude: lat, longitude: lon);
+        }
+      }
+    } catch (e) {
+      debugPrint('Géocodage échoué pour "$address": $e');
+    }
+
+    return null;
+  }
+
+  String _normalizeAddress(String address) {
+    return address.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  _GeocodedPoint? _getFallbackCoordinates(String address) {
+    final lowerAddress = address.toLowerCase();
+    final fallbacks = <String, _GeocodedPoint>{
+      'salon': _GeocodedPoint(latitude: 43.6452, longitude: 5.0936),
+      'salon de provence': _GeocodedPoint(latitude: 43.6452, longitude: 5.0936),
+      'salon-de-provence': _GeocodedPoint(latitude: 43.6452, longitude: 5.0936),
+      'aix': _GeocodedPoint(latitude: 43.5298, longitude: 5.4474),
+      'aix-en-provence': _GeocodedPoint(latitude: 43.5298, longitude: 5.4474),
+      'marseille': _GeocodedPoint(latitude: 43.2965, longitude: 5.3698),
+      'avignon': _GeocodedPoint(latitude: 43.9516, longitude: 4.8057),
+      'cannes': _GeocodedPoint(latitude: 43.5525, longitude: 7.0176),
+      'nice': _GeocodedPoint(latitude: 43.7102, longitude: 7.2625),
+    };
+
+    for (final key in fallbacks.keys) {
+      if (lowerAddress.contains(key)) {
+        return fallbacks[key];
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _seedPostsWithAddresses() async {
+    if (_authorEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Email utilisateur manquant pour créer les posts. Reviens depuis l\'accueil connecté.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSeedingPosts = true;
+    });
+
+    final templates = <_SeedAddressPost>[
+      _SeedAddressPost(
+        title: 'Observation au Parc Jourdan',
+        address: 'Parc Jourdan, Aix-en-Provence',
+      ),
+      _SeedAddressPost(
+        title: 'Observation sur le Cours Mirabeau',
+        address: 'Cours Mirabeau, Aix-en-Provence',
+      ),
+      _SeedAddressPost(
+        title: 'Observation proche de la Rotonde',
+        address: 'Fontaine de la Rotonde, Aix-en-Provence',
+      ),
+      _SeedAddressPost(
+        title: 'Observation à la Sainte-Victoire',
+        address: 'Le Tholonet, Aix-en-Provence',
+      ),
+    ];
+
+    var createdCount = 0;
+    try {
+      for (final item in templates) {
+        final geo = await _geocodeAddress(item.address);
+        if (geo == null) {
+          continue;
+        }
+
+        final created = await _postRepository.createPost(
+          authorEmail: _authorEmail,
+          title: item.title,
+          content: 'Post de démonstration carte.\nAdresse: ${item.address}',
+          locationName: item.address,
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+        );
+
+        if (created != null) {
+          createdCount++;
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSeedingPosts = false;
+          _postsFuture = _loadMappedPosts();
+        });
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$createdCount post(s) créés avec adresse et coordonnées.',
+        ),
+      ),
+    );
   }
 }
 
@@ -122,7 +379,11 @@ class _HeaderCard extends StatelessWidget {
         children: [
           const Text(
             'Carte des observations',
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -138,7 +399,7 @@ class _HeaderCard extends StatelessWidget {
 class _PostsMap extends StatefulWidget {
   const _PostsMap({required this.posts});
 
-  final List<Post> posts;
+  final List<_MappedPost> posts;
 
   @override
   State<_PostsMap> createState() => _PostsMapState();
@@ -150,21 +411,25 @@ class _PostsMapState extends State<_PostsMap> {
   @override
   Widget build(BuildContext context) {
     final markers = widget.posts
-        .where((post) => post.hasLocation)
         .map(
           (post) => Marker(
-            point: LatLng(post.latitude!, post.longitude!),
+            point: LatLng(post.latitude, post.longitude),
             width: 48,
             height: 48,
             child: GestureDetector(
               onTap: () => _showPostBottomSheet(context, post),
-              child: const Icon(Icons.location_on, size: 44, color: Colors.redAccent),
+              child: const Icon(
+                Icons.location_on,
+                size: 44,
+                color: Colors.redAccent,
+              ),
             ),
           ),
         )
         .toList();
 
-    final initialCenter = _computeCenter(widget.posts) ?? const LatLng(43.5297, 5.4474);
+    final initialCenter =
+        _computeCenter(widget.posts) ?? const LatLng(43.5297, 5.4474);
     final bounds = _computeBounds(widget.posts);
 
     return ClipRRect(
@@ -202,23 +467,23 @@ class _PostsMapState extends State<_PostsMap> {
     );
   }
 
-  LatLng? _computeCenter(List<Post> posts) {
-    final locatedPosts = posts.where((post) => post.hasLocation).toList();
-    if (locatedPosts.isEmpty) return null;
+  LatLng? _computeCenter(List<_MappedPost> posts) {
+    if (posts.isEmpty) return null;
 
-    final latSum = locatedPosts.fold<double>(0, (sum, post) => sum + post.latitude!);
-    final lonSum = locatedPosts.fold<double>(0, (sum, post) => sum + post.longitude!);
-    return LatLng(latSum / locatedPosts.length, lonSum / locatedPosts.length);
+    final latSum = posts.fold<double>(0, (sum, post) => sum + post.latitude);
+    final lonSum = posts.fold<double>(0, (sum, post) => sum + post.longitude);
+    return LatLng(latSum / posts.length, lonSum / posts.length);
   }
 
-  LatLngBounds? _computeBounds(List<Post> posts) {
-    final locatedPosts = posts.where((post) => post.hasLocation).toList();
-    if (locatedPosts.isEmpty) return null;
+  LatLngBounds? _computeBounds(List<_MappedPost> posts) {
+    if (posts.isEmpty) return null;
 
-    return LatLngBounds.fromPoints(locatedPosts.map((post) => LatLng(post.latitude!, post.longitude!)).toList());
+    return LatLngBounds.fromPoints(
+      posts.map((post) => LatLng(post.latitude, post.longitude)).toList(),
+    );
   }
 
-  void _showPostBottomSheet(BuildContext context, Post post) {
+  void _showPostBottomSheet(BuildContext context, _MappedPost post) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -230,13 +495,25 @@ class _PostsMapState extends State<_PostsMap> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(post.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  post.post.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text(post.locationName ?? 'Emplacement sans nom'),
+                Text(
+                  post.resolvedAddress ??
+                      post.post.locationName ??
+                      'Emplacement sans nom',
+                ),
                 const SizedBox(height: 6),
-                Text('Lat: ${post.latitude?.toStringAsFixed(5)}  Lon: ${post.longitude?.toStringAsFixed(5)}'),
+                Text(
+                  'Lat: ${post.latitude.toStringAsFixed(5)}  Lon: ${post.longitude.toStringAsFixed(5)}',
+                ),
                 const SizedBox(height: 6),
-                Text(post.content ?? 'Observation'),
+                Text(post.post.content ?? 'Observation'),
               ],
             ),
           ),
@@ -249,7 +526,7 @@ class _PostsMapState extends State<_PostsMap> {
 class _PostLocationCard extends StatelessWidget {
   const _PostLocationCard({required this.post});
 
-  final Post post;
+  final _MappedPost post;
 
   @override
   Widget build(BuildContext context) {
@@ -257,11 +534,13 @@ class _PostLocationCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: const Icon(Icons.place, color: Colors.green),
-        title: Text(post.title),
+        title: Text(post.post.title),
         subtitle: Text(
           [
-            if (post.locationName != null && post.locationName!.trim().isNotEmpty) post.locationName!,
-            if (post.latitude != null && post.longitude != null) '${post.latitude!.toStringAsFixed(4)}, ${post.longitude!.toStringAsFixed(4)}',
+            if (post.resolvedAddress != null &&
+                post.resolvedAddress!.trim().isNotEmpty)
+              post.resolvedAddress!,
+            '${post.latitude.toStringAsFixed(4)}, ${post.longitude.toStringAsFixed(4)}',
           ].join('\n'),
         ),
         isThreeLine: true,
@@ -276,13 +555,25 @@ class _PostLocationCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      post.post.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text(post.locationName ?? 'Emplacement sans nom'),
+                    Text(
+                      post.resolvedAddress ??
+                          post.post.locationName ??
+                          'Emplacement sans nom',
+                    ),
                     const SizedBox(height: 6),
-                    Text('Lat: ${post.latitude?.toStringAsFixed(5)}  Lon: ${post.longitude?.toStringAsFixed(5)}'),
+                    Text(
+                      'Lat: ${post.latitude.toStringAsFixed(5)}  Lon: ${post.longitude.toStringAsFixed(5)}',
+                    ),
                     const SizedBox(height: 6),
-                    Text(post.content ?? 'Observation'),
+                    Text(post.post.content ?? 'Observation'),
                   ],
                 ),
               ),
@@ -295,7 +586,11 @@ class _PostLocationCard extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.title, required this.subtitle});
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   final IconData icon;
   final String title;
@@ -314,11 +609,98 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 48, color: Colors.grey.shade600),
           const SizedBox(height: 12),
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Text(subtitle, textAlign: TextAlign.center),
         ],
       ),
     );
   }
+}
+
+class _SeedPostsCard extends StatelessWidget {
+  const _SeedPostsCard({
+    required this.isLoading,
+    required this.onCreate,
+    required this.hasAuthorEmail,
+  });
+
+  final bool isLoading;
+  final Future<void> Function() onCreate;
+  final bool hasAuthorEmail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Créer des posts de démo',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasAuthorEmail
+                  ? 'Crée automatiquement des posts avec plusieurs adresses d\'Aix-en-Provence.'
+                  : 'Email utilisateur absent: retourne à l\'accueil connecté puis rouvre la carte.',
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isLoading || !hasAuthorEmail ? null : onCreate,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_location_alt),
+                label: Text(
+                  isLoading
+                      ? 'Création en cours...'
+                      : 'Créer 4 posts avec adresses',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MappedPost {
+  const _MappedPost({
+    required this.post,
+    required this.latitude,
+    required this.longitude,
+    this.resolvedAddress,
+  });
+
+  final Post post;
+  final double latitude;
+  final double longitude;
+  final String? resolvedAddress;
+}
+
+class _GeocodedPoint {
+  const _GeocodedPoint({required this.latitude, required this.longitude});
+
+  final double latitude;
+  final double longitude;
+}
+
+class _SeedAddressPost {
+  const _SeedAddressPost({required this.title, required this.address});
+
+  final String title;
+  final String address;
 }

@@ -206,7 +206,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
               // Bouton Carte
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte, arguments: _userEmail),
                   child: _buildQuickAction(Icons.map, 'Carte', Colors.blue),
                 ),
               ),
