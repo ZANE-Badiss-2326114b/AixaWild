@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 import 'package:flutter_application_1/data/api/auth/auth_token_manager.dart';
 import 'package:flutter_application_1/data/api/core/api_interface.dart';

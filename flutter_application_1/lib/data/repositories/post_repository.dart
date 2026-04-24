@@ -30,12 +30,27 @@ class PostRepository {
 		required String authorEmail,
 		required String title,
 		String? content,
+		String? locationName,
+		double? latitude,
+		double? longitude,
 	}) async {
 		final payload = <String, dynamic>{
 			'authorEmail': authorEmail,
 			'title': title,
 			'content': content,
 		};
+
+		if (locationName != null && locationName.trim().isNotEmpty) {
+			payload['locationName'] = locationName.trim();
+		}
+		if (latitude != null) {
+			payload['latitude'] = latitude;
+			payload['lat'] = latitude;
+		}
+		if (longitude != null) {
+			payload['longitude'] = longitude;
+			payload['lng'] = longitude;
+		}
 
 		final response = await _apiClient.post(ApiEndpoints.posts, payload);
 		if (response is Map<String, dynamic>) {
@@ -49,12 +64,27 @@ class PostRepository {
 		required String authorEmail,
 		required String title,
 		String? content,
+		String? locationName,
+		double? latitude,
+		double? longitude,
 	}) async {
 		final payload = <String, dynamic>{
 			'authorEmail': authorEmail,
 			'title': title,
 			'content': content,
 		};
+
+		if (locationName != null && locationName.trim().isNotEmpty) {
+			payload['locationName'] = locationName.trim();
+		}
+		if (latitude != null) {
+			payload['latitude'] = latitude;
+			payload['lat'] = latitude;
+		}
+		if (longitude != null) {
+			payload['longitude'] = longitude;
+			payload['lng'] = longitude;
+		}
 
 		final response = await _apiClient.put(ApiEndpoints.postById(postId), payload);
 		if (response is Map<String, dynamic>) {
