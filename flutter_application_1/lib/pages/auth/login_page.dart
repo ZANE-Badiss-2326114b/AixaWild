@@ -194,7 +194,15 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
           child: const Text('Enregistrer', style: TextStyle(fontSize: 12)),
         ),
         const Spacer(),
-        const Text('Mot de passe oublié ?', style: TextStyle(fontSize: 12)),
+        TextButton(
+          style: TextButton.styleFrom(
+            minimumSize: Size.zero,
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: _isLoading ? null : _onForgotPasswordPressed,
+          child: const Text('Mot de passe oublié ?', style: TextStyle(fontSize: 12)),
+        ),
       ],
     );
   }
@@ -306,6 +314,59 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     await _saveRememberPreference(email);
 
     Navigator.pushReplacementNamed(context, AppRoutes.intranetAccueil, arguments: email);
+  }
+
+  Future<void> _onForgotPasswordPressed() async {
+    final initialEmail = _emailController.text.trim();
+    final dialogController = TextEditingController(text: initialEmail);
+
+    final enteredEmail = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Réinitialiser le mot de passe'),
+          content: TextField(
+            controller: dialogController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, dialogController.text.trim()),
+              child: const Text('Envoyer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    dialogController.dispose();
+
+    if (enteredEmail == null || enteredEmail.isEmpty) {
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(enteredEmail)) {
+      _showMessage('Veuillez entrer une adresse email valide.');
+      return;
+    }
+
+    try {
+      await _userRepository.requestPasswordReset(enteredEmail);
+      if (!mounted) return;
+      _showMessage('Si le compte existe, un email de réinitialisation a été envoyé.');
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Impossible d\'envoyer la demande pour le moment. Réessaie plus tard.');
+    }
   }
 
   Future<void> _loadRememberedLogin() async {
