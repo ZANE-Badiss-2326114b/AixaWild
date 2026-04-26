@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../data/api/auth/auth_token_manager.dart';
 import '../../data/api/core/dio_client.dart';
@@ -18,15 +19,21 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final MyDatabase _database = MyDatabase();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   late final UserRepository _userRepository;
+
+  static const String _rememberMeKey = 'remember_me';
+  static const String _rememberedEmailKey = 'remembered_email';
 
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _rememberMe = false;
 
   @override
   void initState() {
     super.initState();
     _userRepository = UserRepository(DioApiClient(), _database.userDao);
+    _loadRememberedLogin();
   }
 
   @override
@@ -162,13 +169,32 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
   }
 
   Widget _buildRememberAndForgotRow() {
-    return const Row(
+    return Row(
       children: [
-        Icon(Icons.check_box_outline_blank_rounded, size: 20, color: Color(0xFF222222)),
-        SizedBox(width: 8),
-        Text('Enregistrer', style: TextStyle(fontSize: 12)),
-        Spacer(),
-        Text('Mot de passe oublié ?', style: TextStyle(fontSize: 12)),
+        SizedBox(
+          width: 20,
+          height: 20,
+          child: Checkbox(
+            value: _rememberMe,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (value) {
+              setState(() {
+                _rememberMe = value ?? false;
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _rememberMe = !_rememberMe;
+            });
+          },
+          child: const Text('Enregistrer', style: TextStyle(fontSize: 12)),
+        ),
+        const Spacer(),
+        const Text('Mot de passe oublié ?', style: TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -277,7 +303,37 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
       return;
     }
 
+    await _saveRememberPreference(email);
+
     Navigator.pushReplacementNamed(context, AppRoutes.intranetAccueil, arguments: email);
+  }
+
+  Future<void> _loadRememberedLogin() async {
+    final rememberValue = await _storage.read(key: _rememberMeKey);
+    if (rememberValue != 'true') {
+      return;
+    }
+
+    final rememberedEmail = (await _storage.read(key: _rememberedEmailKey))?.trim();
+    if (!mounted) return;
+
+    setState(() {
+      _rememberMe = true;
+      if (rememberedEmail != null && rememberedEmail.isNotEmpty) {
+        _emailController.text = rememberedEmail;
+      }
+    });
+  }
+
+  Future<void> _saveRememberPreference(String email) async {
+    if (_rememberMe) {
+      await _storage.write(key: _rememberMeKey, value: 'true');
+      await _storage.write(key: _rememberedEmailKey, value: email);
+      return;
+    }
+
+    await _storage.delete(key: _rememberMeKey);
+    await _storage.delete(key: _rememberedEmailKey);
   }
 
   void _showMessage(String message) {
