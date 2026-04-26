@@ -13,7 +13,7 @@ PreferredSizeWidget intranetAppBar({
       ),
     ),
     centerTitle: true,
-    backgroundColor: Colors.green[800],
+    backgroundColor: const Color(0xFF1F6FB2),
     actions: actions,
   );
 }

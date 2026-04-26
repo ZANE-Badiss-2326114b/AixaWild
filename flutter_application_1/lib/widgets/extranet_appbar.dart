@@ -15,8 +15,8 @@ PreferredSizeWidget extranetAppBar(
       style: const TextStyle(fontWeight: FontWeight.bold),
     ),
     centerTitle: true,
-    backgroundColor: Colors.green.shade100,
-    foregroundColor: Colors.green.shade900,
+    backgroundColor: const Color(0xFF1F6FB2),
+    foregroundColor: Colors.white,
     actions: actions ?? _buildDefaultActions(context, routeName),
   );
 }

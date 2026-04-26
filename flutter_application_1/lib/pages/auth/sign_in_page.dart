@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/models/subscription_type.dart';
 import '../../data/repositories/subscription_repository.dart';
@@ -38,7 +38,7 @@ class _SignInExtranetPageState extends State<SignInExtranetPage> {
   @override
   void initState() {
     super.initState();
-    final apiClient = ApiClient();
+    final apiClient = DioApiClient();
     _userRepository = UserRepository(apiClient, _database.userDao);
     _subscriptionRepository = SubscriptionRepository(apiClient);
     _subscriptionTypesFuture = _loadSubscriptionTypes();

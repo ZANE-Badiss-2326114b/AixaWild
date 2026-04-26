@@ -33,7 +33,21 @@ class AixaWildApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'AixaWild',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, primary: Colors.green[800]!),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F6FB2), primary: const Color(0xFF1F6FB2)),
+        primaryColor: const Color(0xFF1F6FB2),
+        scaffoldBackgroundColor: const Color(0xFFECECEC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1F6FB2),
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1F6FB2),
+            foregroundColor: Colors.white,
+          ),
+        ),
         useMaterial3: true,
       ),
       initialRoute: AppRoutes.extranetLogin,

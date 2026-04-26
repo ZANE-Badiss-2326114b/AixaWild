@@ -322,7 +322,7 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
             : const Icon(Icons.check),
         label: Text(_isSubmitting ? 'Création...' : 'Créer le post'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF1F6FB2),
           foregroundColor: Colors.white,
         ),
       ),

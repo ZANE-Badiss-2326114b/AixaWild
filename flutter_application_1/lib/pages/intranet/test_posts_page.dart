@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../data/api/api_client.dart';
+import '../../data/api/core/dio_client.dart';
 import '../../data/models/media.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/media_repository.dart';
@@ -42,7 +42,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
   @override
   void initState() {
     super.initState();
-    final apiClient = ApiClient();
+    final apiClient = DioApiClient();
     _postRepository = PostRepository(apiClient);
     _mediaRepository = MediaRepository(apiClient);
   }
@@ -381,11 +381,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
     try {
       final uploadedMedia = <Media>[];
       for (final selectedImage in selectedImages) {
-        final media = await _mediaRepository.uploadMedia(
-          postId: postId,
-          mediaBytes: await selectedImage.readAsBytes(),
-          fileName: selectedImage.name,
-        );
+        final media = await _uploadPickedFile(postId: postId, file: selectedImage);
         if (media != null) {
           uploadedMedia.add(media);
         }
@@ -472,11 +468,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           for (final selectedImage in selectedImages) {
             try {
-              final uploadedMedia = await _mediaRepository.uploadMedia(
-                postId: created.id,
-                mediaBytes: await selectedImage.readAsBytes(),
-                fileName: selectedImage.name,
-              );
+              final uploadedMedia = await _uploadPickedFile(postId: created.id, file: selectedImage);
               if (uploadedMedia != null) {
                 uploadedCount++;
               } else {
@@ -489,11 +481,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           if (selectedVideo != null) {
             try {
-              final uploadedMedia = await _mediaRepository.uploadMedia(
-                postId: created.id,
-                mediaBytes: await selectedVideo.readAsBytes(),
-                fileName: selectedVideo.name,
-              );
+              final uploadedMedia = await _uploadPickedFile(postId: created.id, file: selectedVideo);
               if (uploadedMedia != null) {
                 uploadedCount++;
               } else {
@@ -601,11 +589,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
     });
 
     try {
-      final media = await _mediaRepository.uploadMedia(
-        postId: postId,
-        mediaBytes: await selectedVideo.readAsBytes(),
-        fileName: selectedVideo.name,
-      );
+      final media = await _uploadPickedFile(postId: postId, file: selectedVideo);
 
       if (media == null) {
         _showMessage('Upload vidéo échoué.');
@@ -639,6 +623,15 @@ class _TestPostsPageState extends State<TestPostsPage> {
     } finally {
       await controller.dispose();
     }
+  }
+
+  Future<Media?> _uploadPickedFile({required int postId, required XFile file}) async {
+    final mediaBytes = await file.readAsBytes();
+    return _mediaRepository.uploadMedia(
+      postId: postId,
+      mediaBytes: mediaBytes,
+      fileName: file.name,
+    );
   }
 
   bool _isVideoUrl(String url) {

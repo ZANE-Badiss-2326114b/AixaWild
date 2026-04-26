@@ -62,7 +62,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   }
 
   Widget _buildBody(BuildContext context) {
-    return SingleChildScrollView(child: Column(children: [_buildUserGreetingHeader(), const SizedBox(height: 20), _buildWelcomeHeader(), const SizedBox(height: 20), _buildQuickActionsRow(context), const SizedBox(height: 30), _buildDiscoveriesHeader(), _buildPostsSection()]));
+    return SingleChildScrollView(child: Column(children: [_buildWelcomeHeader(), _buildUserGreetingHeader(), const SizedBox(height: 20), _buildQuickActionsRow(context), const SizedBox(height: 30), _buildDiscoveriesHeader(), _buildPostsSection()]));
   }
 
   Widget _buildPostsSection() {
@@ -178,7 +178,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.green[800],
+        color: const Color(0xFF1F6FB2),
         borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
       ),
       child: const Column(
@@ -257,7 +257,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       },
       label: const Text('Recenser'),
       icon: const Icon(Icons.add_a_photo),
-      backgroundColor: Colors.green[700],
+      backgroundColor: const Color(0xFF1F6FB2),
       foregroundColor: Colors.white,
     );
   }
@@ -286,8 +286,8 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   Widget _buildObservationItem(String titre, String sousTitre, String date, IconData icon) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.green[100],
-        child: Icon(icon, color: Colors.green[800]),
+        backgroundColor: Colors.blue[100],
+        child: Icon(icon, color: const Color(0xFF1F6FB2)),
       ),
       title: Text(titre, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(sousTitre),
