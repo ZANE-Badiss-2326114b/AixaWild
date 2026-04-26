@@ -148,7 +148,7 @@ class UserRepository {
   }
 
   Future<void> logout() async {
-    await AuthTokenManager.instance.clearToken();
+    await AuthTokenManager.instance.clearOnLogout();
     // Optionnel : supprimer les données locales au logout
     // await _userDao.clearAll();
   }

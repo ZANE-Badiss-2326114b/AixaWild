@@ -4,6 +4,7 @@ import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/repositories/user_repository.dart';
 import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_appbar.dart';
 
@@ -17,15 +18,18 @@ class AccueilIntranetPage extends StatefulWidget {
 class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   final MyDatabase _database = MyDatabase();
   late final PostRepository _postRepository;
+  late final UserRepository _userRepository;
   late Future<User?> _userFuture;
   late Future<List<Post>> _postsFuture;
   String _userEmail = '';
   bool _isInitialized = false;
+  bool _isLoggingOut = false;
 
   @override
   void initState() {
     super.initState();
     _postRepository = PostRepository(DioApiClient());
+    _userRepository = UserRepository(DioApiClient(), _database.userDao);
   }
 
   @override
@@ -157,6 +161,12 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
                 displayedName,
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
               ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _isLoggingOut ? null : _handleLogout,
+                icon: const Icon(Icons.logout),
+                label: const Text('Se déconnecter'),
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -170,6 +180,26 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      await _userRepository.logout();
+    } catch (_) {
+      // Keep navigation behavior even if local logout cleanup fails.
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.extranetLogin,
+      (route) => false,
     );
   }
 
