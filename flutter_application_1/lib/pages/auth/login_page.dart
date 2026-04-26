@@ -184,7 +184,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           textStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
         ),
-        onPressed: _isLoading ? null : () => _onLoginPressed(context),
+        onPressed: _isLoading ? null : _onLoginPressed,
         child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('LOGIN'),
       ),
     );
@@ -238,7 +238,7 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
     );
   }
 
-  Future<void> _onLoginPressed(BuildContext context) async {
+  Future<void> _onLoginPressed() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
