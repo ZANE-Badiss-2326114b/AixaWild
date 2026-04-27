@@ -22,6 +22,7 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   final TextEditingController _speciesSearchController = TextEditingController();
   String _userEmail = '';
   bool _isInitialized = false;
+  bool _isSpeciesMenuExpanded = true;
   String? _selectedSpecies;
   String _speciesSearchQuery = '';
 
@@ -138,118 +139,153 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
               children: [
-                const Text(
-                  'Toutes les espèces',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _speciesSearchController,
-                  onChanged: (value) {
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
                     setState(() {
-                      _speciesSearchQuery = value;
+                      _isSpeciesMenuExpanded = !_isSpeciesMenuExpanded;
                     });
                   },
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher une catégorie...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _speciesSearchQuery.trim().isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Effacer la recherche',
-                            onPressed: () {
-                              _speciesSearchController.clear();
-                              setState(() {
-                                _speciesSearchQuery = '';
-                              });
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (filteredSpeciesNames.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.blue.shade100),
                     ),
-                    child: const Text(
-                      'Aucune catégorie ne correspond à cette recherche.',
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      mainAxisExtent: 92,
-                    ),
-                    itemCount: filteredSpeciesNames.length,
-                    itemBuilder: (context, index) {
-                      final species = filteredSpeciesNames[index];
-                      final count = grouped[species]!.length;
-                      final isSelected = _selectedSpecies == species;
-
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedSpecies = species;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.blue[700] : Colors.blue[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isSelected ? Colors.blue.shade700 : Colors.blue.shade100),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.pets, color: isSelected ? Colors.white : Colors.blue[700]),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      species,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white : Colors.blue[900],
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '$count post(s)',
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white70 : Colors.blue[700],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Toutes les espèces',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
-                      );
-                    },
+                        if (_selectedSpecies != null)
+                          Flexible(
+                            child: Text(
+                              _selectedSpecies!,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        Icon(_isSpeciesMenuExpanded ? Icons.expand_less : Icons.expand_more),
+                      ],
+                    ),
                   ),
+                ),
+                const SizedBox(height: 10),
+                if (_isSpeciesMenuExpanded) ...[
+                  TextField(
+                    controller: _speciesSearchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _speciesSearchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher une catégorie...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _speciesSearchQuery.trim().isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Effacer la recherche',
+                              onPressed: () {
+                                _speciesSearchController.clear();
+                                setState(() {
+                                  _speciesSearchQuery = '';
+                                });
+                              },
+                              icon: const Icon(Icons.close),
+                            ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (filteredSpeciesNames.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade100),
+                      ),
+                      child: const Text(
+                        'Aucune catégorie ne correspond à cette recherche.',
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        mainAxisExtent: 92,
+                      ),
+                      itemCount: filteredSpeciesNames.length,
+                      itemBuilder: (context, index) {
+                        final species = filteredSpeciesNames[index];
+                        final count = grouped[species]!.length;
+                        final isSelected = _selectedSpecies == species;
+
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedSpecies = species;
+                              _isSpeciesMenuExpanded = false;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.blue[700] : Colors.blue[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: isSelected ? Colors.blue.shade700 : Colors.blue.shade100),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.pets, color: isSelected ? Colors.white : Colors.blue[700]),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        species,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white : Colors.blue[900],
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$count post(s)',
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white70 : Colors.blue[700],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
                 const SizedBox(height: 16),
                 Text(
                   'Posts - ${_selectedSpecies ?? ''}',
