@@ -8,6 +8,8 @@ class JePosteIntranetPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final routeArgument = ModalRoute.of(context)?.settings.arguments;
+
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Je poste'),
       body: Center(
@@ -24,12 +26,26 @@ class JePosteIntranetPage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
+              const Text(
+                'Renseignez au moins la ville pour que le post puisse être positionné sur la carte.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.intranetFormulaire);
+                  if (routeArgument is String &&
+                      routeArgument.trim().isNotEmpty) {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.intranetFormulaire,
+                      arguments: routeArgument.trim(),
+                    );
+                  } else {
+                    Navigator.pushNamed(context, AppRoutes.intranetFormulaire);
+                  }
                 },
                 icon: const Icon(Icons.edit),
-                label: const Text('Ouvrir le formulaire'),
+                label: const Text('Ouvrir le formulaire détaillé'),
               ),
             ],
           ),

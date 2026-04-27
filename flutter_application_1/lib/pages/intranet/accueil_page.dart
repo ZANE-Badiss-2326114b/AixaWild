@@ -82,7 +82,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   }
 
   Widget _buildBody(BuildContext context) {
-    return SingleChildScrollView(child: Column(children: [_buildUserGreetingHeader(), const SizedBox(height: 20), _buildWelcomeHeader(), const SizedBox(height: 20), _buildQuickActionsRow(context), const SizedBox(height: 30), _buildDiscoveriesHeader(), _buildPostsSection()]));
+    return SingleChildScrollView(child: Column(children: [_buildWelcomeHeader(), _buildUserGreetingHeader(), const SizedBox(height: 20), _buildQuickActionsRow(context), const SizedBox(height: 30), _buildDiscoveriesHeader(), _buildPostsSection()]));
   }
 
   Widget _buildPostsSection() {
@@ -198,7 +198,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.green[800],
+        color: const Color(0xFF1F6FB2),
         borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
       ),
       child: const Column(
@@ -224,10 +224,20 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
           Row(
             children: [
               // Bouton Carte
-              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte), child: _buildQuickAction(Icons.map, 'Carte', Colors.blue)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetCarte, arguments: _userEmail),
+                  child: _buildQuickAction(Icons.map, 'Carte', Colors.blue),
+                ),
+              ),
               const SizedBox(width: 15),
               // Bouton Mes fiches
-              GestureDetector(onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches), child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches),
+                  child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -267,30 +277,28 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
       },
       label: const Text('Recenser'),
       icon: const Icon(Icons.add_a_photo),
-      backgroundColor: Colors.green[700],
+      backgroundColor: const Color(0xFF1F6FB2),
       foregroundColor: Colors.white,
     );
   }
 
   Widget _buildQuickAction(IconData icon, String label, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
@@ -298,8 +306,8 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   Widget _buildObservationItem(String titre, String sousTitre, String date, IconData icon) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.green[100],
-        child: Icon(icon, color: Colors.green[800]),
+        backgroundColor: Colors.blue[100],
+        child: Icon(icon, color: const Color(0xFF1F6FB2)),
       ),
       title: Text(titre, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(sousTitre),

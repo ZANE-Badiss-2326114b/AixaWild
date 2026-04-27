@@ -5,6 +5,9 @@ class Post {
 	final String authorEmail;
 	final String title;
 	final String? content;
+	final String? locationName;
+	final double? latitude;
+	final double? longitude;
 	final int likesCount;
 	final int reportingCount;
 	final DateTime? createdAt;
@@ -14,6 +17,9 @@ class Post {
 		required this.authorEmail,
 		required this.title,
 		this.content,
+		this.locationName,
+		this.latitude,
+		this.longitude,
 		this.likesCount = 0,
 		this.reportingCount = 0,
 		this.createdAt,
@@ -23,6 +29,9 @@ class Post {
 		final idValue = json['id'] ?? json['post_id'] ?? json['postId'];
 		final likesValue = json['likesCount'] ?? json['likes_count'];
 		final reportingValue = json['reportingCount'] ?? json['reporting_count'];
+		final locationValue = json['locationName'] ?? json['location_name'] ?? json['location'] ?? json['address'];
+		final latitudeValue = json['latitude'] ?? json['lat'];
+		final longitudeValue = json['longitude'] ?? json['lng'] ?? json['lon'];
 
 		return Post(
 			id: idValue is num ? idValue.toInt() : int.tryParse('$idValue') ?? 0,
@@ -33,6 +42,11 @@ class Post {
 			content: JsonParser.asString(json['content']).isEmpty
 					? null
 					: JsonParser.asString(json['content']),
+			locationName: JsonParser.asString(locationValue).isEmpty
+					? null
+					: JsonParser.asString(locationValue),
+			latitude: _toDouble(latitudeValue),
+			longitude: _toDouble(longitudeValue),
 			likesCount: likesValue is num
 					? likesValue.toInt()
 					: int.tryParse('$likesValue') ?? 0,
@@ -49,9 +63,22 @@ class Post {
 			'authorEmail': authorEmail,
 			'title': title,
 			'content': content,
+			'locationName': locationName,
+			'latitude': latitude,
+			'longitude': longitude,
 			'likesCount': likesCount,
 			'reportingCount': reportingCount,
 			'createdAt': createdAt?.toIso8601String(),
 		};
+	}
+
+	bool get hasLocation => latitude != null && longitude != null;
+
+	static double? _toDouble(dynamic value) {
+		if (value == null) return null;
+		if (value is double) return value;
+		if (value is int) return value.toDouble();
+		if (value is num) return value.toDouble();
+		return double.tryParse(value.toString().replaceAll(',', '.'));
 	}
 }
