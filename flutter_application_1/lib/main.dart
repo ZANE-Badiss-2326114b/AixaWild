@@ -4,6 +4,9 @@ import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'pages/auth/extranet_home_page.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/sign_in_page.dart';
+import 'pages/admin/admin_dashboard_page.dart';
+import 'pages/admin/post_monitoring_page.dart';
+import 'pages/admin/user_management_page.dart';
 import 'pages/intranet/accueil_page.dart';
 import 'pages/intranet/carte_page.dart';
 import 'pages/intranet/explication_page.dart';
@@ -47,6 +50,9 @@ class AixaWildApp extends StatelessWidget {
         AppRoutes.intranetJePoste: (context) => const JePosteIntranetPage(),
         AppRoutes.intranetCarte: (context) => const CarteIntranetPage(),
         AppRoutes.intranetExplication: (context) => const ExplicationIntranetPage(),
+        AppRoutes.adminDashboard: (context) => const AdminDashboardPage(),
+        AppRoutes.adminUserManagement: (context) => const UserManagementPage(),
+        AppRoutes.adminPostMonitoring: (context) => const PostMonitoringPage(),
         AppRoutes.extranetHome: (context) => const HomeExtranetPage(),
         AppRoutes.extranetLogin: (context) => const LoginExtranetPage(),
         AppRoutes.extranetSignIn: (context) => const SignInExtranetPage(),
