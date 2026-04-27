@@ -19,9 +19,11 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   late final PostRepository _postRepository;
   late final OpinionRepository _opinionRepository;
   late Future<List<Post>> _postsFuture;
+  final TextEditingController _speciesSearchController = TextEditingController();
   String _userEmail = '';
   bool _isInitialized = false;
   String? _selectedSpecies;
+  String _speciesSearchQuery = '';
 
   @override
   void initState() {
@@ -43,6 +45,12 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
     }
 
     _isInitialized = true;
+  }
+
+  @override
+  void dispose() {
+    _speciesSearchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -108,9 +116,20 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
 
             final grouped = _groupBySpecies(posts);
             final speciesNames = grouped.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+            final normalizedQuery = _normalizeSearchText(_speciesSearchQuery);
+            final filteredSpeciesNames = speciesNames.where((species) {
+              if (normalizedQuery.isEmpty) {
+                return true;
+              }
+              return _normalizeSearchText(species).contains(normalizedQuery);
+            }).toList();
 
-            if (_selectedSpecies == null || !grouped.containsKey(_selectedSpecies)) {
-              _selectedSpecies = speciesNames.first;
+            if (filteredSpeciesNames.isNotEmpty) {
+              if (_selectedSpecies == null || !filteredSpeciesNames.contains(_selectedSpecies)) {
+                _selectedSpecies = filteredSpeciesNames.first;
+              }
+            } else {
+              _selectedSpecies = null;
             }
 
             final selectedPosts = List<Post>.from(grouped[_selectedSpecies] ?? <Post>[]);
@@ -124,70 +143,113 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    mainAxisExtent: 92,
-                  ),
-                  itemCount: speciesNames.length,
-                  itemBuilder: (context, index) {
-                    final species = speciesNames[index];
-                    final count = grouped[species]!.length;
-                    final isSelected = _selectedSpecies == species;
-
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedSpecies = species;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue[700] : Colors.blue[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: isSelected ? Colors.blue.shade700 : Colors.blue.shade100),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.pets, color: isSelected ? Colors.white : Colors.blue[700]),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    species,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.blue[900],
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '$count post(s)',
-                                    style: TextStyle(
-                                      color: isSelected ? Colors.white70 : Colors.blue[700],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                TextField(
+                  controller: _speciesSearchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _speciesSearchQuery = value;
+                    });
                   },
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher une catégorie...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _speciesSearchQuery.trim().isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Effacer la recherche',
+                            onPressed: () {
+                              _speciesSearchController.clear();
+                              setState(() {
+                                _speciesSearchQuery = '';
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
                 ),
+                const SizedBox(height: 10),
+                if (filteredSpeciesNames.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade100),
+                    ),
+                    child: const Text(
+                      'Aucune catégorie ne correspond à cette recherche.',
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      mainAxisExtent: 92,
+                    ),
+                    itemCount: filteredSpeciesNames.length,
+                    itemBuilder: (context, index) {
+                      final species = filteredSpeciesNames[index];
+                      final count = grouped[species]!.length;
+                      final isSelected = _selectedSpecies == species;
+
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedSpecies = species;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue[700] : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isSelected ? Colors.blue.shade700 : Colors.blue.shade100),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.pets, color: isSelected ? Colors.white : Colors.blue[700]),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      species,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white : Colors.blue[900],
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$count post(s)',
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white70 : Colors.blue[700],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 const SizedBox(height: 16),
                 Text(
                   'Posts - ${_selectedSpecies ?? ''}',
@@ -283,14 +345,25 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   }
 
   Map<String, List<Post>> _groupBySpecies(List<Post> posts) {
-    final map = <String, List<Post>>{};
+    final postsByKey = <String, List<Post>>{};
+    final labelsByKey = <String, String>{};
 
     for (final post in posts) {
-      final species = post.title.trim().isEmpty ? 'Sans espèce' : post.title.trim();
-      map.putIfAbsent(species, () => <Post>[]).add(post);
+      final rawSpecies = post.title.trim().isEmpty ? 'Sans espèce' : post.title.trim();
+      final normalizedKey = _normalizeSearchText(rawSpecies).replaceAll(RegExp(r'\s+'), ' ');
+      final displayLabel = _toCategoryLabel(rawSpecies);
+
+      postsByKey.putIfAbsent(normalizedKey, () => <Post>[]).add(post);
+      labelsByKey.putIfAbsent(normalizedKey, () => displayLabel);
     }
 
-    return map;
+    final grouped = <String, List<Post>>{};
+    for (final entry in postsByKey.entries) {
+      final label = labelsByKey[entry.key] ?? _toCategoryLabel(entry.key);
+      grouped[label] = entry.value;
+    }
+
+    return grouped;
   }
 
   int _sortNewestFirst(Post a, Post b) {
@@ -321,6 +394,71 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
     }
 
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _normalizeSearchText(String input) {
+    final lower = input.trim().toLowerCase();
+    if (lower.isEmpty) {
+      return '';
+    }
+
+    const replacements = <String, String>{
+      'à': 'a',
+      'á': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'ã': 'a',
+      'å': 'a',
+      'ç': 'c',
+      'è': 'e',
+      'é': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'ì': 'i',
+      'í': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ñ': 'n',
+      'ò': 'o',
+      'ó': 'o',
+      'ô': 'o',
+      'ö': 'o',
+      'õ': 'o',
+      'ù': 'u',
+      'ú': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ý': 'y',
+      'ÿ': 'y',
+      'œ': 'oe',
+      'æ': 'ae',
+    };
+
+    final buffer = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      buffer.write(replacements[char] ?? char);
+    }
+
+    return buffer.toString();
+  }
+
+  String _toCategoryLabel(String input) {
+    final normalizedSpace = input.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (normalizedSpace.isEmpty) {
+      return 'Sans espèce';
+    }
+
+    final words = normalizedSpace.split(' ');
+    final titled = words.map((word) {
+      final lower = word.toLowerCase();
+      if (lower.isEmpty) {
+        return lower;
+      }
+      return '${lower[0].toUpperCase()}${lower.substring(1)}';
+    }).toList();
+
+    return titled.join(' ');
   }
 
   bool _isPostLiked(Post post) {
