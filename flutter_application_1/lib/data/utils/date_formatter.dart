@@ -1,7 +1,11 @@
 import 'package:intl/intl.dart';
 
+/// Utilitaire de formatage de dates pour la couche présentation.
 class DateFormatter {
-  // Format standard : 24/03/2024
+  /// Formate une date courte (`dd/MM/yyyy`).
+  ///
+  /// [date] est la date à formater.
+  /// Retourne la date formatée ou `Date inconnue` si `null`.
   static String toShortDate(DateTime? date) {
     String formattedDate;
 
@@ -14,7 +18,10 @@ class DateFormatter {
     return formattedDate;
   }
 
-  // Format avec heure : 24/03/2024 à 14:30
+  /// Formate une date avec heure (`dd/MM/yyyy à HH:mm`).
+  ///
+  /// [date] est la date à formater.
+  /// Retourne la date/heure formatée ou `Date inconnue` si `null`.
   static String toDateTime(DateTime? date) {
     String formattedDateTime;
 
@@ -27,7 +34,10 @@ class DateFormatter {
     return formattedDateTime;
   }
 
-  // Pour l'affichage des posts : "Il y a 2 heures"
+  /// Génère un libellé relatif de type "Il y a Xh".
+  ///
+  /// [date] est la date de référence.
+  /// Retourne une chaîne relative, ou vide si `date` est `null`.
   static String timeAgo(DateTime? date) {
     String value;
 
