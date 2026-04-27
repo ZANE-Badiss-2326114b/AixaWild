@@ -6,31 +6,38 @@ import 'package:flutter_application_1/data/api/core/api_interface.dart';
 
 typedef UnauthorizedHandler = Future<void> Function();
 typedef RefreshTokenHandler = Future<String?> Function(String refreshToken);
+typedef ForbiddenHandler = Future<void> Function(String message);
 
 class DioApiClient implements IApiClient {
-  DioApiClient({Dio? dio, AuthTokenManager? authTokenManager, this.onUnauthorized, this.onRefreshToken}) : _dio = dio ?? Dio(BaseOptions(baseUrl: _apiBaseUrl, connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(seconds: 30), sendTimeout: const Duration(seconds: 30), responseType: ResponseType.json, headers: const <String, dynamic>{'Accept': 'application/json', 'User-Agent': 'Flutter-Aixawild'})), _authTokenManager = authTokenManager ?? AuthTokenManager.instance {
-    _dio.interceptors.add(_AuthInterceptor(dio: _dio, authTokenManager: _authTokenManager, onUnauthorized: onUnauthorized, onRefreshToken: onRefreshToken));
+  DioApiClient({Dio? dio, AuthTokenManager? authTokenManager, this.onUnauthorized, this.onRefreshToken, this.onForbidden}) : _dio = dio ?? Dio(BaseOptions(baseUrl: _apiBaseUrl, connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(seconds: 30), sendTimeout: const Duration(seconds: 30), responseType: ResponseType.json, headers: const <String, dynamic>{'Accept': 'application/json', 'User-Agent': 'Flutter-Aixawild'})), _authTokenManager = authTokenManager ?? AuthTokenManager.instance {
+    _dio.interceptors.add(_AuthInterceptor(dio: _dio, authTokenManager: _authTokenManager, onUnauthorized: onUnauthorized, onRefreshToken: onRefreshToken, onForbidden: onForbidden));
   }
+  //static const String _apiBaseUrl = 'https://api-7e6i.onrender.com/api';
 
-  //static const String _apiBaseUrlFromEnv = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-  static const String _apiBaseUrl = 'https://api-7e6i.onrender.com/api';
-  // static String get _apiBaseUrl {
-  //   if (_apiBaseUrlFromEnv.trim().isNotEmpty) {
-  //     return _apiBaseUrlFromEnv.trim();
-  //   }
-  //   if (kIsWeb) {
-  //     return 'http://localhost:8080/api';
-  //   }
-  //   if (defaultTargetPlatform == TargetPlatform.android) {
-  //     return 'http://10.0.2.2:8080/api';
-  //   }
-  //   return 'http://localhost:8080/api';
-  // }
+  static const String _apiBaseUrlFromEnv = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static String get _apiBaseUrl {
+    final configuredBaseUrl = _apiBaseUrlFromEnv.trim();
+
+    if (configuredBaseUrl.isNotEmpty) {
+      return configuredBaseUrl;
+    } else {
+      if (kIsWeb) {
+        return 'http://localhost:8080/api';
+      } else {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8080/api';
+        } else {
+          return 'http://localhost:8080/api';
+        }
+      }
+    }
+  }
 
   final Dio _dio;
   final AuthTokenManager _authTokenManager;
   final UnauthorizedHandler? onUnauthorized;
   final RefreshTokenHandler? onRefreshToken;
+  final ForbiddenHandler? onForbidden;
 
   @override
   Future<dynamic> get(String endpoint, {Map<String, String>? headers, bool includeAuthorization = true}) async {
@@ -53,6 +60,7 @@ class DioApiClient implements IApiClient {
         data: data,
         options: _buildOptions(headers: headers, includeAuthorization: includeAuthorization),
       );
+
       return response.data;
     } on DioException catch (error) {
       throw _mapException(error);
@@ -172,7 +180,7 @@ class DioApiClient implements IApiClient {
 }
 
 class _AuthInterceptor extends Interceptor {
-  _AuthInterceptor({required Dio dio, required AuthTokenManager authTokenManager, required this.onUnauthorized, required this.onRefreshToken}) : _dio = dio, _authTokenManager = authTokenManager;
+  _AuthInterceptor({required Dio dio, required AuthTokenManager authTokenManager, required this.onUnauthorized, required this.onRefreshToken, required this.onForbidden}) : _dio = dio, _authTokenManager = authTokenManager;
 
   static const String requiresAuthKey = 'requiresAuthorization';
   static const String retried401Key = 'retriedAfterUnauthorized';
@@ -181,6 +189,7 @@ class _AuthInterceptor extends Interceptor {
   final AuthTokenManager _authTokenManager;
   final UnauthorizedHandler? onUnauthorized;
   final RefreshTokenHandler? onRefreshToken;
+  final ForbiddenHandler? onForbidden;
 
   @override
   Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
@@ -188,6 +197,7 @@ class _AuthInterceptor extends Interceptor {
 
     if (requiresAuthorization && !options.headers.containsKey('Authorization')) {
       final accessToken = await _authTokenManager.getAccessToken();
+      //print("TOKEN ENVOYÉ : $accessToken");
       if (accessToken != null && accessToken.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $accessToken';
       }
@@ -215,6 +225,13 @@ class _AuthInterceptor extends Interceptor {
     final statusCode = error.response?.statusCode;
     final requestOptions = error.requestOptions;
     final requiresAuthorization = requestOptions.extra[requiresAuthKey] != false;
+    const forbiddenMessage = 'Accès refusé : Vous n\'avez pas les droits nécessaires';
+
+    if (statusCode == 403) {
+      if (onForbidden != null) {
+        await onForbidden!(forbiddenMessage);
+      }
+    }
 
     if (statusCode == 401 && requiresAuthorization) {
       final alreadyRetried = requestOptions.extra[retried401Key] == true;

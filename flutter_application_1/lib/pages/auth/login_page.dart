@@ -102,10 +102,15 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
   Future<void> _onLoginPressed(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    String routeEmail;
+    String destinationRoute;
 
     if (email.isEmpty || password.isEmpty) {
       _showMessage('Veuillez renseigner email et mot de passe.');
       return;
+    } else {
+      routeEmail = email;
+      destinationRoute = AppRoutes.intranetAccueil;
     }
 
     setState(() {
@@ -136,9 +141,22 @@ class _LoginExtranetPageState extends State<LoginExtranetPage> {
         _showMessage('Connexion impossible: identifiants invalides.');
       }
       return;
+    } else {
+      final identity = await _userRepository.currentUserIdentity();
+      if (identity != null && identity.email.trim().isNotEmpty) {
+        routeEmail = identity.email.trim();
+      } else {
+        routeEmail = email;
+      }
+
+      if (identity != null && identity.isAdmin) {
+        destinationRoute = AppRoutes.adminDashboard;
+      } else {
+        destinationRoute = AppRoutes.intranetAccueil;
+      }
     }
 
-    Navigator.pushReplacementNamed(context, AppRoutes.intranetAccueil, arguments: email);
+    Navigator.pushReplacementNamed(context, destinationRoute, arguments: routeEmail);
   }
 
   void _showMessage(String message) {
