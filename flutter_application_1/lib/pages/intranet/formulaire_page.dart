@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../data/api/api_client.dart';
+import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/utils/species_classifier.dart';
 import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
@@ -16,13 +21,16 @@ class FormulaireIntranetPage extends StatefulWidget {
 
 class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
   late final PostRepository _postRepository;
+  late final MediaRepository _mediaRepository;
   final _nomController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _localisationController = TextEditingController();
-  String _categorie = 'Faune';
+  final _imagePicker = ImagePicker();
+  List<File> _selectedMediaFiles = [];
   String? _authorEmail;
   bool _isInitialized = false;
   bool _isSubmitting = false;
+  bool _isSpeciesValid = false;
 
   final Dio _geocodingDio = Dio(
     BaseOptions(
@@ -36,6 +44,7 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
   void initState() {
     super.initState();
     _postRepository = PostRepository(ApiClient());
+    _mediaRepository = MediaRepository(ApiClient());
   }
 
   @override
@@ -61,19 +70,6 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
     super.dispose();
   }
 
-  String _sanitizeInput(String input) {
-    final buffer = StringBuffer();
-    final allowed = RegExp(r"[a-zA-Z0-9\s\-éèêëàâäùûüôöçœæ'’,.()]");
-
-    for (final char in input.split('')) {
-      if (allowed.hasMatch(char)) {
-        buffer.write(char);
-      }
-    }
-
-    return buffer.toString();
-  }
-
   Future<void> _enregistrerObservation() async {
     final nom = _nomController.text.trim();
     final description = _descriptionController.text.trim();
@@ -83,6 +79,19 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez entrer un nom d\'espèce')),
       );
+      return;
+    }
+
+    // Vérification que c'est un animal/espèce valide
+    if (!SpeciesClassifier.isValidSpecies(nom)) {
+      final suggestion = SpeciesClassifier.findClosestMatch(nom);
+      final message = suggestion != null
+          ? 'Espèce non reconnue. Avez-vous voulu dire "$suggestion" ?'
+          : 'Cette espèce n\'est pas reconnue. Veuillez vérifier l\'orthographe ou choisir un animal valide.';
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
@@ -120,7 +129,6 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
     try {
       final geocodedPoint = await _geocodeLocation(localisation);
       final contentBuffer = StringBuffer()
-        ..writeln('Catégorie: $_categorie')
         ..writeln('Localisation: $localisation');
 
       if (description.isNotEmpty) {
@@ -147,9 +155,61 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$nom enregistré avec succès !')));
+      // Upload des fichiers médias s'il y en a
+      var uploadedCount = 0;
+      var uploadFailed = false;
+
+      for (final mediaFile in _selectedMediaFiles) {
+        try {
+          final mediaBytes = await mediaFile.readAsBytes();
+          final fileName = mediaFile.path.split('/').last;
+
+          await _mediaRepository.uploadMedia(
+            postId: created.id,
+            mediaBytes: mediaBytes,
+            fileName: fileName,
+          );
+
+          uploadedCount++;
+        } catch (e) {
+          uploadFailed = true;
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      // Message de confirmation
+      if (_selectedMediaFiles.isNotEmpty) {
+        if (uploadFailed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '$nom enregistré ! $uploadedCount média(s) uploadé(s) avec succès.',
+              ),
+            ),
+          );
+        } else if (uploadedCount == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Post créé, mais l\'upload des médias a échoué.'),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '$nom enregistré ! $uploadedCount média(s) uploadé(s).',
+              ),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$nom enregistré avec succès !')),
+        );
+      }
 
       Navigator.pushNamedAndRemoveUntil(
         context,
@@ -181,11 +241,75 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
     return regex.hasMatch(input);
   }
 
+  void _onSpeciesChanged(String value) {
+    setState(() {
+      _isSpeciesValid =
+          value.trim().isEmpty || SpeciesClassifier.isValidSpecies(value);
+    });
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+      );
+      if (photo != null) {
+        setState(() {
+          _selectedMediaFiles.add(File(photo.path));
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de la capture photo')),
+      );
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedMediaFiles.add(File(image.path));
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de la sélection d\'image')),
+      );
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    try {
+      final XFile? video = await _imagePicker.pickVideo(
+        source: ImageSource.gallery,
+      );
+      if (video != null) {
+        setState(() {
+          _selectedMediaFiles.add(File(video.path));
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de la sélection de vidéo')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Recensement'),
-      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Je poste'),
+      bottomNavigationBar: intranetBottomNavigationBar(
+        context,
+        selectedTab: 'Je poste',
+      ),
       body: _buildBody(),
     );
   }
@@ -204,7 +328,7 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
         const SizedBox(height: 16),
         _buildLocationField(),
         const SizedBox(height: 16),
-        _buildCategorySelector(),
+        _buildMediaSection(),
         const SizedBox(height: 24),
         _buildSubmitButton(),
       ],
@@ -241,14 +365,31 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
   }
 
   Widget _buildSpeciesField() {
+    final isNotEmpty = _nomController.text.trim().isNotEmpty;
+    final hasError = isNotEmpty && !_isSpeciesValid;
+
     return TextField(
       controller: _nomController,
       textCapitalization: TextCapitalization.words,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: hasError ? Colors.red : Colors.grey,
+            width: hasError ? 2 : 1,
+          ),
+        ),
         labelText: 'Nom de l\'espèce',
         hintText: 'Ex: Sanglier, Olivier, Cigale...',
-        prefixIcon: Icon(Icons.search),
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: isNotEmpty
+            ? Icon(
+                _isSpeciesValid ? Icons.check_circle : Icons.cancel,
+                color: _isSpeciesValid ? Colors.green : Colors.red,
+              )
+            : null,
+        errorText: hasError
+            ? 'Espèce non reconnue. Veuillez vérifier l\'orthographe.'
+            : null,
       ),
       onChanged: _onSpeciesChanged,
     );
@@ -285,23 +426,111 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
     );
   }
 
-  Widget _buildCategorySelector() {
+  Widget _buildMediaSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('2) Catégorie :', style: TextStyle(fontSize: 16)),
-        DropdownButton<String>(
-          value: _categorie,
-          isExpanded: true,
-          items: <String>['Faune', 'Flore'].map((String value) {
-            return DropdownMenuItem<String>(value: value, child: Text(value));
-          }).toList(),
-          onChanged: (nouvelleValeur) {
-            setState(() {
-              _categorie = nouvelleValeur!;
-            });
-          },
+        const Text(
+          '4) Ajouter des photos/vidéos (optionnel)',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _pickImageFromCamera,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Appareil photo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _pickImageFromGallery,
+              icon: const Icon(Icons.image),
+              label: const Text('Galerie'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _pickVideo,
+              icon: const Icon(Icons.videocam),
+              label: const Text('Vidéo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        if (_selectedMediaFiles.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            '${_selectedMediaFiles.length} fichier(s) sélectionné(s)',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _selectedMediaFiles.length,
+              itemBuilder: (context, index) {
+                final file = _selectedMediaFiles[index];
+                final isVideo =
+                    file.path.endsWith('.mp4') ||
+                    file.path.endsWith('.mov') ||
+                    file.path.endsWith('.avi');
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[300],
+                        ),
+                        child: isVideo
+                            ? const Center(
+                                child: Icon(Icons.videocam, size: 40),
+                              )
+                            : const Center(child: Icon(Icons.image, size: 40)),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMediaFiles.removeAt(index);
+                            });
+                          },
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -329,16 +558,6 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
         ),
       ),
     );
-  }
-
-  void _onSpeciesChanged(String value) {
-    final filtered = _sanitizeInput(value);
-    if (filtered != value) {
-      _nomController.text = filtered;
-      _nomController.selection = TextSelection.fromPosition(
-        TextPosition(offset: filtered.length),
-      );
-    }
   }
 
   Future<_GeocodedPoint?> _geocodeLocation(String location) async {
