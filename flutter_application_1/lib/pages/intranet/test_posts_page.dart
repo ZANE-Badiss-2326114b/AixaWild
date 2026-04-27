@@ -9,6 +9,7 @@ import '../../data/models/media.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/utils/media_cache.dart';
 import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
@@ -34,7 +35,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
   bool _isInitialized = false;
   bool _isCreatingPost = false;
   List<Post> _posts = <Post>[];
-  final Map<int, List<Media>> _mediaByPost = <int, List<Media>>{};
+  final MediaCache _mediaCache = MediaCache();
   final Map<int, bool> _isUploadingByPost = <int, bool>{};
   bool _isLoadingPosts = true;
 
@@ -74,10 +75,24 @@ class _TestPostsPageState extends State<TestPostsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'Exemple API - Posts'),
-      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Accueil'),
+      bottomNavigationBar: intranetBottomNavigationBar(
+        context,
+        selectedTab: 'Accueil',
+      ),
       body: RefreshIndicator(
         onRefresh: _loadPosts,
-        child: ListView(padding: const EdgeInsets.all(16), children: [_buildCurrentUserCard(), const SizedBox(height: 12), _buildCreatePostCard(), const SizedBox(height: 12), _buildPostsHeader(), const SizedBox(height: 8), _buildPostsList()]),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildCurrentUserCard(),
+            const SizedBox(height: 12),
+            _buildCreatePostCard(),
+            const SizedBox(height: 12),
+            _buildPostsHeader(),
+            const SizedBox(height: 8),
+            _buildPostsList(),
+          ],
+        ),
       ),
     );
   }
@@ -89,11 +104,18 @@ class _TestPostsPageState extends State<TestPostsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('1) Utilisateur courant', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              '1) Utilisateur courant',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Email', hintText: 'exemple@domaine.com'),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Email',
+                hintText: 'exemple@domaine.com',
+              ),
             ),
           ],
         ),
@@ -108,30 +130,47 @@ class _TestPostsPageState extends State<TestPostsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('2) Créer un post', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text(
+              '2) Créer un post',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Titre'),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Titre',
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _contentController,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Contenu'),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Contenu',
+              ),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: _isCreatingPost ? null : _pickImagesForCreatePost,
               icon: const Icon(Icons.photo_library_outlined),
-              label: Text(_createPostImages.isEmpty ? 'Ajouter des images (optionnel)' : '${_createPostImages.length} image(s) sélectionnée(s)'),
+              label: Text(
+                _createPostImages.isEmpty
+                    ? 'Ajouter des images (optionnel)'
+                    : '${_createPostImages.length} image(s) sélectionnée(s)',
+              ),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _isCreatingPost ? null : _pickVideoForCreatePost,
               icon: const Icon(Icons.videocam_outlined),
-              label: Text(_createPostVideo == null ? 'Ajouter une vidéo (max 21s)' : 'Vidéo sélectionnée (max 21s)'),
+              label: Text(
+                _createPostVideo == null
+                    ? 'Ajouter une vidéo (max 21s)'
+                    : 'Vidéo sélectionnée (max 21s)',
+              ),
             ),
             if (_createPostImages.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -171,7 +210,11 @@ class _TestPostsPageState extends State<TestPostsPage> {
                                 shape: BoxShape.circle,
                               ),
                               padding: const EdgeInsets.all(4),
-                              child: const Icon(Icons.close, size: 16, color: Colors.white),
+                              child: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -218,7 +261,13 @@ class _TestPostsPageState extends State<TestPostsPage> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isCreatingPost ? null : _createPost,
-                icon: _isCreatingPost ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.add),
+                icon: _isCreatingPost
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add),
                 label: Text(_isCreatingPost ? 'Création...' : 'Créer le post'),
               ),
             ),
@@ -232,8 +281,15 @@ class _TestPostsPageState extends State<TestPostsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('3) Liste des posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        IconButton(onPressed: _loadPosts, icon: const Icon(Icons.refresh), tooltip: 'Rafraîchir'),
+        const Text(
+          '3) Liste des posts',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        IconButton(
+          onPressed: _loadPosts,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Rafraîchir',
+        ),
       ],
     );
   }
@@ -249,13 +305,18 @@ class _TestPostsPageState extends State<TestPostsPage> {
     } else {
       if (_posts.isEmpty) {
         result = const Card(
-          child: Padding(padding: EdgeInsets.all(16), child: Text('Aucun post pour le moment.')),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Aucun post pour le moment.'),
+          ),
         );
       } else {
         final currentEmail = _currentEmail.toLowerCase();
         result = Column(
           children: _posts.map((post) {
-            final isOwnPost = currentEmail.isNotEmpty && post.authorEmail.trim().toLowerCase() == currentEmail;
+            final isOwnPost =
+                currentEmail.isNotEmpty &&
+                post.authorEmail.trim().toLowerCase() == currentEmail;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
@@ -264,12 +325,27 @@ class _TestPostsPageState extends State<TestPostsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      post.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 6),
                     Text(post.content ?? ''),
                     const SizedBox(height: 8),
-                    Text('Auteur: ${post.authorEmail}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                    Text('Likes: ${post.likesCount}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                    Text(
+                      'Auteur: ${post.authorEmail}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    Text(
+                      'Likes: ${post.likesCount}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _buildMediaSection(post),
                     const SizedBox(height: 8),
@@ -285,22 +361,46 @@ class _TestPostsPageState extends State<TestPostsPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadImages(post.id),
+                              onPressed: _isUploadingByPost[post.id] == true
+                                  ? null
+                                  : () => _pickAndUploadImages(post.id),
                               icon: _isUploadingByPost[post.id] == true
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : const Icon(Icons.image),
-                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter des images depuis la galerie'),
+                              label: Text(
+                                _isUploadingByPost[post.id] == true
+                                    ? 'Upload en cours...'
+                                    : 'Ajouter des images depuis la galerie',
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadVideo(post.id),
+                              onPressed: _isUploadingByPost[post.id] == true
+                                  ? null
+                                  : () => _pickAndUploadVideo(post.id),
                               icon: _isUploadingByPost[post.id] == true
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : const Icon(Icons.videocam),
-                              label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter une vidéo (max 21s)'),
+                              label: Text(
+                                _isUploadingByPost[post.id] == true
+                                    ? 'Upload en cours...'
+                                    : 'Ajouter une vidéo (max 21s)',
+                              ),
                             ),
                           ),
                         ],
@@ -310,7 +410,13 @@ class _TestPostsPageState extends State<TestPostsPage> {
                         alignment: Alignment.centerRight,
                         child: Chip(label: Text('Autre utilisateur')),
                       ),
-                    Text('ID post: ${post.id}', style: const TextStyle(fontSize: 11, color: Colors.black45)),
+                    Text(
+                      'ID post: ${post.id}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black45,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -353,19 +459,21 @@ class _TestPostsPageState extends State<TestPostsPage> {
     final loadedMedia = <int, List<Media>>{};
 
     for (final post in posts) {
-      try {
-        final media = await _mediaRepository.getByPostId(post.id);
-        loadedMedia[post.id] = media;
-      } catch (_) {
-        loadedMedia[post.id] = <Media>[];
+      if (!_mediaCache.hasMediaForPost(post.id)) {
+        try {
+          final media = await _mediaRepository.getByPostId(post.id);
+          loadedMedia[post.id] = media;
+        } catch (_) {
+          loadedMedia[post.id] = <Media>[];
+        }
       }
     }
 
     if (mounted) {
       setState(() {
-        _mediaByPost
-          ..clear()
-          ..addAll(loadedMedia);
+        for (final entry in loadedMedia.entries) {
+          _mediaCache.setMediaForPost(entry.key, entry.value);
+        }
       });
     }
   }
@@ -383,7 +491,10 @@ class _TestPostsPageState extends State<TestPostsPage> {
     try {
       final uploadedMedia = <Media>[];
       for (final selectedImage in selectedImages) {
-        final media = await _uploadPickedFile(postId: postId, file: selectedImage);
+        final media = await _uploadPickedFile(
+          postId: postId,
+          file: selectedImage,
+        );
         if (media != null) {
           uploadedMedia.add(media);
         }
@@ -393,11 +504,18 @@ class _TestPostsPageState extends State<TestPostsPage> {
         _showMessage('Upload échoué.');
       } else {
         if (mounted) {
-          final currentList = List<Media>.from(_mediaByPost[postId] ?? <Media>[]);
-          _mediaByPost[postId] = <Media>[...uploadedMedia, ...currentList];
+          final currentList = List<Media>.from(
+            _mediaCache.getMediaForPost(postId),
+          );
+          _mediaCache.setMediaForPost(postId, <Media>[
+            ...uploadedMedia,
+            ...currentList,
+          ]);
           setState(() {});
         }
-        _showMessage('${uploadedMedia.length} image(s) uploadée(s) avec succès.');
+        _showMessage(
+          '${uploadedMedia.length} image(s) uploadée(s) avec succès.',
+        );
       }
     } catch (error) {
       _showMessage('Erreur API pendant l\'upload: $error');
@@ -411,10 +529,13 @@ class _TestPostsPageState extends State<TestPostsPage> {
   }
 
   Widget _buildMediaSection(Post post) {
-    final mediaList = _mediaByPost[post.id] ?? <Media>[];
+    final mediaList = _mediaCache.getMediaForPost(post.id);
 
     if (mediaList.isEmpty) {
-      return const Text('Aucune image/vidéo associée.', style: TextStyle(fontSize: 12, color: Colors.black54));
+      return const Text(
+        'Aucune image/vidéo associée.',
+        style: TextStyle(fontSize: 12, color: Colors.black54),
+      );
     }
 
     return Column(
@@ -458,7 +579,11 @@ class _TestPostsPageState extends State<TestPostsPage> {
       });
 
       try {
-        final created = await _postRepository.createPost(authorEmail: authorEmail, title: title, content: content.isEmpty ? null : content);
+        final created = await _postRepository.createPost(
+          authorEmail: authorEmail,
+          title: title,
+          content: content.isEmpty ? null : content,
+        );
 
         if (created == null) {
           _showMessage('Création échouée.');
@@ -470,7 +595,10 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           for (final selectedImage in selectedImages) {
             try {
-              final uploadedMedia = await _uploadPickedFile(postId: created.id, file: selectedImage);
+              final uploadedMedia = await _uploadPickedFile(
+                postId: created.id,
+                file: selectedImage,
+              );
               if (uploadedMedia != null) {
                 uploadedCount++;
               } else {
@@ -483,7 +611,10 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           if (selectedVideo != null) {
             try {
-              final uploadedMedia = await _uploadPickedFile(postId: created.id, file: selectedVideo);
+              final uploadedMedia = await _uploadPickedFile(
+                postId: created.id,
+                file: selectedVideo,
+              );
               if (uploadedMedia != null) {
                 uploadedCount++;
               } else {
@@ -496,7 +627,10 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           if (mounted) {
             setState(() {
-              _posts = <Post>[created, ..._posts.where((post) => post.id != created.id)];
+              _posts = <Post>[
+                created,
+                ..._posts.where((post) => post.id != created.id),
+              ];
             });
           }
 
@@ -513,9 +647,13 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           if (selectedImages.isNotEmpty || selectedVideo != null) {
             if (uploadFailed) {
-              _showMessage('Post créé, mais l\'upload de certains médias a échoué.');
+              _showMessage(
+                'Post créé, mais l\'upload de certains médias a échoué.',
+              );
             } else {
-              _showMessage('Post et $uploadedCount média(s) créés avec succès.');
+              _showMessage(
+                'Post et $uploadedCount média(s) créés avec succès.',
+              );
             }
           } else {
             _showMessage('Post créé avec succès.');
@@ -558,7 +696,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
       return;
     }
 
-    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
+    final isValidDuration = await _isVideoWithinMaxDuration(
+      File(selectedVideo.path),
+    );
     if (!isValidDuration) {
       _showMessage('La vidéo doit durer 21 secondes maximum.');
       return;
@@ -580,7 +720,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
       return;
     }
 
-    final isValidDuration = await _isVideoWithinMaxDuration(File(selectedVideo.path));
+    final isValidDuration = await _isVideoWithinMaxDuration(
+      File(selectedVideo.path),
+    );
     if (!isValidDuration) {
       _showMessage('La vidéo doit durer 21 secondes maximum.');
       return;
@@ -591,14 +733,19 @@ class _TestPostsPageState extends State<TestPostsPage> {
     });
 
     try {
-      final media = await _uploadPickedFile(postId: postId, file: selectedVideo);
+      final media = await _uploadPickedFile(
+        postId: postId,
+        file: selectedVideo,
+      );
 
       if (media == null) {
         _showMessage('Upload vidéo échoué.');
       } else {
         if (mounted) {
-          final currentList = List<Media>.from(_mediaByPost[postId] ?? <Media>[]);
-          _mediaByPost[postId] = <Media>[media, ...currentList];
+          final currentList = List<Media>.from(
+            _mediaCache.getMediaForPost(postId),
+          );
+          _mediaCache.setMediaForPost(postId, <Media>[media, ...currentList]);
           setState(() {});
         }
         _showMessage('Vidéo uploadée avec succès.');
@@ -627,7 +774,10 @@ class _TestPostsPageState extends State<TestPostsPage> {
     }
   }
 
-  Future<Media?> _uploadPickedFile({required int postId, required XFile file}) async {
+  Future<Media?> _uploadPickedFile({
+    required int postId,
+    required XFile file,
+  }) async {
     final mediaBytes = await file.readAsBytes();
     return _mediaRepository.uploadMedia(
       postId: postId,
@@ -637,7 +787,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
   }
 
   bool _isVideoUrl(String url) {
-    final normalizedPath = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    final normalizedPath =
+        Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
     return normalizedPath.endsWith('.mp4') ||
         normalizedPath.endsWith('.mov') ||
         normalizedPath.endsWith('.webm') ||
@@ -651,13 +802,13 @@ class _TestPostsPageState extends State<TestPostsPage> {
       final media = await _mediaRepository.getByPostId(postId);
       if (mounted) {
         setState(() {
-          _mediaByPost[postId] = media;
+          _mediaCache.setMediaForPost(postId, media);
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _mediaByPost[postId] = <Media>[];
+          _mediaCache.setMediaForPost(postId, <Media>[]);
         });
       }
     }
@@ -665,7 +816,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
   void _showMessage(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 }

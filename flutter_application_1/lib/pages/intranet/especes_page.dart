@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../data/api/core/dio_client.dart';
+import '../../data/models/media.dart';
 import '../../data/models/post.dart';
+import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/opinion_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/utils/media_cache.dart';
 import '../../data/utils/post_interactions_memory.dart';
 import '../../widgets/intranet_appbar.dart';
 import '../../widgets/intranet_bottom_navigation.dart';
@@ -18,8 +21,11 @@ class EspecesIntranetPage extends StatefulWidget {
 class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   late final PostRepository _postRepository;
   late final OpinionRepository _opinionRepository;
+  late final MediaRepository _mediaRepository;
   late Future<List<Post>> _postsFuture;
-  final TextEditingController _speciesSearchController = TextEditingController();
+  final TextEditingController _speciesSearchController =
+      TextEditingController();
+  final MediaCache _mediaCache = MediaCache();
   String _userEmail = '';
   bool _isInitialized = false;
   bool _isSpeciesMenuExpanded = true;
@@ -32,6 +38,7 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
     final apiClient = DioApiClient();
     _postRepository = PostRepository(apiClient);
     _opinionRepository = OpinionRepository(apiClient);
+    _mediaRepository = MediaRepository(apiClient);
     _postsFuture = _loadPosts();
   }
 
@@ -58,7 +65,10 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Espèces'),
-      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Espèces'),
+      bottomNavigationBar: intranetBottomNavigationBar(
+        context,
+        selectedTab: 'Espèces',
+      ),
       body: RefreshIndicator(
         onRefresh: _refreshPosts,
         child: FutureBuilder<List<Post>>(
@@ -78,7 +88,11 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   const SizedBox(height: 80),
-                  const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 40,
+                    color: Colors.redAccent,
+                  ),
                   const SizedBox(height: 10),
                   const Text(
                     'Impossible de charger les espèces.',
@@ -116,7 +130,8 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
             }
 
             final grouped = _groupBySpecies(posts);
-            final speciesNames = grouped.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+            final speciesNames = grouped.keys.toList()
+              ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
             final normalizedQuery = _normalizeSearchText(_speciesSearchQuery);
             final filteredSpeciesNames = speciesNames.where((species) {
               if (normalizedQuery.isEmpty) {
@@ -126,14 +141,17 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
             }).toList();
 
             if (filteredSpeciesNames.isNotEmpty) {
-              if (_selectedSpecies == null || !filteredSpeciesNames.contains(_selectedSpecies)) {
+              if (_selectedSpecies == null ||
+                  !filteredSpeciesNames.contains(_selectedSpecies)) {
                 _selectedSpecies = filteredSpeciesNames.first;
               }
             } else {
               _selectedSpecies = null;
             }
 
-            final selectedPosts = List<Post>.from(grouped[_selectedSpecies] ?? <Post>[]);
+            final selectedPosts = List<Post>.from(
+              grouped[_selectedSpecies] ?? <Post>[],
+            );
             selectedPosts.sort(_sortNewestFirst);
 
             return ListView(
@@ -147,7 +165,10 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -158,7 +179,10 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                         const Expanded(
                           child: Text(
                             'Toutes les espèces',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         if (_selectedSpecies != null)
@@ -166,11 +190,18 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                             child: Text(
                               _selectedSpecies!,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         const SizedBox(width: 8),
-                        Icon(_isSpeciesMenuExpanded ? Icons.expand_less : Icons.expand_more),
+                        Icon(
+                          _isSpeciesMenuExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                        ),
                       ],
                     ),
                   ),
@@ -199,7 +230,9 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                               },
                               icon: const Icon(Icons.close),
                             ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -223,12 +256,13 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        mainAxisExtent: 92,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            mainAxisExtent: 92,
+                          ),
                       itemCount: filteredSpeciesNames.length,
                       itemBuilder: (context, index) {
                         final species = filteredSpeciesNames[index];
@@ -246,17 +280,29 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.blue[700] : Colors.blue[50],
+                              color: isSelected
+                                  ? Colors.blue[700]
+                                  : Colors.blue[50],
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isSelected ? Colors.blue.shade700 : Colors.blue.shade100),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.blue.shade700
+                                    : Colors.blue.shade100,
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.pets, color: isSelected ? Colors.white : Colors.blue[700]),
+                                Icon(
+                                  Icons.pets,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.blue[700],
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -264,7 +310,9 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.blue[900],
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.blue[900],
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -272,7 +320,9 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                                       Text(
                                         '$count post(s)',
                                         style: TextStyle(
-                                          color: isSelected ? Colors.white70 : Colors.blue[700],
+                                          color: isSelected
+                                              ? Colors.white70
+                                              : Colors.blue[700],
                                           fontSize: 12,
                                         ),
                                       ),
@@ -289,76 +339,106 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                 const SizedBox(height: 16),
                 Text(
                   'Posts - ${_selectedSpecies ?? ''}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 if (selectedPosts.isEmpty)
                   const Text('Aucun post pour cette espèce.')
                 else
-                  ...selectedPosts.map((post) => Card(
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => _openPostDetails(post),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        post.title,
-                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ...selectedPosts.map(
+                    (post) => Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _openPostDetails(post),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      post.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
                                       ),
                                     ),
-                                    Text('#${post.id}', style: const TextStyle(color: Colors.grey)),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                if ((post.content ?? '').trim().isNotEmpty) Text(post.content!.trim()),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Text(
-                                      _formatDate(post.createdAt),
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                  Text(
+                                    '#${post.id}',
+                                    style: const TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              if ((post.content ?? '').trim().isNotEmpty)
+                                Text(post.content!.trim()),
+                              const SizedBox(height: 8),
+                              _buildMediaSection(post),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Text(
+                                    _formatDate(post.createdAt),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      post.authorEmail,
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    post.authorEmail,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      tooltip: 'Like',
-                                      onPressed: () => _toggleLike(post),
-                                      icon: Icon(
-                                        _isPostLiked(post) ? Icons.favorite : Icons.favorite_border,
-                                        color: _isPostLiked(post) ? Colors.red : Colors.grey,
-                                      ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Like',
+                                    onPressed: () => _toggleLike(post),
+                                    icon: Icon(
+                                      _isPostLiked(post)
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: _isPostLiked(post)
+                                          ? Colors.red
+                                          : Colors.grey,
                                     ),
-                                    Text('${_displayedLikes(post)}'),
-                                    const SizedBox(width: 16),
-                                    IconButton(
-                                      tooltip: 'Commenter',
-                                      onPressed: () => _openCommentDialog(post),
-                                      icon: const Icon(Icons.mode_comment_outlined),
+                                  ),
+                                  Text('${_displayedLikes(post)}'),
+                                  const SizedBox(width: 16),
+                                  IconButton(
+                                    tooltip: 'Commenter',
+                                    onPressed: () => _openCommentDialog(post),
+                                    icon: const Icon(
+                                      Icons.mode_comment_outlined,
                                     ),
-                                    Text('${PostInteractionsMemory.commentsForPost(post.id).length}'),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                  Text(
+                                    '${PostInteractionsMemory.commentsForPost(post.id).length}',
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
               ],
             );
           },
@@ -370,7 +450,28 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   Future<List<Post>> _loadPosts() async {
     final posts = await _postRepository.getAllPosts();
     posts.sort(_sortNewestFirst);
+
+    // Charger les médias pour chaque post
+    await _loadMediaForPosts(posts);
+
     return posts;
+  }
+
+  Future<void> _loadMediaForPosts(List<Post> posts) async {
+    for (final post in posts) {
+      if (!_mediaCache.hasMediaForPost(post.id)) {
+        try {
+          final media = await _mediaRepository.getByPostId(post.id);
+          _mediaCache.setMediaForPost(post.id, media);
+        } catch (_) {
+          _mediaCache.setMediaForPost(post.id, <Media>[]);
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _refreshPosts() async {
@@ -385,8 +486,12 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
     final labelsByKey = <String, String>{};
 
     for (final post in posts) {
-      final rawSpecies = post.title.trim().isEmpty ? 'Sans espèce' : post.title.trim();
-      final normalizedKey = _normalizeSearchText(rawSpecies).replaceAll(RegExp(r'\s+'), ' ');
+      final rawSpecies = post.title.trim().isEmpty
+          ? 'Sans espèce'
+          : post.title.trim();
+      final normalizedKey = _normalizeSearchText(
+        rawSpecies,
+      ).replaceAll(RegExp(r'\s+'), ' ');
       final displayLabel = _toCategoryLabel(rawSpecies);
 
       postsByKey.putIfAbsent(normalizedKey, () => <Post>[]).add(post);
@@ -498,7 +603,10 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   }
 
   bool _isPostLiked(Post post) {
-    return PostInteractionsMemory.isLikedByUser(postId: post.id, userEmail: _userEmail);
+    return PostInteractionsMemory.isLikedByUser(
+      postId: post.id,
+      userEmail: _userEmail,
+    );
   }
 
   int _displayedLikes(Post post) {
@@ -515,21 +623,93 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
 
     try {
       if (currentlyLiked) {
-        await _opinionRepository.removeLike(postId: post.id, userEmail: _userEmail);
+        await _opinionRepository.removeLike(
+          postId: post.id,
+          userEmail: _userEmail,
+        );
       } else {
-        await _opinionRepository.addLike(postId: post.id, userEmail: _userEmail);
+        await _opinionRepository.addLike(
+          postId: post.id,
+          userEmail: _userEmail,
+        );
       }
 
-      PostInteractionsMemory.setLikedByUser(postId: post.id, userEmail: _userEmail, liked: !currentlyLiked);
+      PostInteractionsMemory.setLikedByUser(
+        postId: post.id,
+        userEmail: _userEmail,
+        liked: !currentlyLiked,
+      );
       if (!mounted) return;
       setState(() {});
     } catch (_) {
       // Keep interaction responsive even when API sync fails.
-      PostInteractionsMemory.setLikedByUser(postId: post.id, userEmail: _userEmail, liked: !currentlyLiked);
+      PostInteractionsMemory.setLikedByUser(
+        postId: post.id,
+        userEmail: _userEmail,
+        liked: !currentlyLiked,
+      );
       if (!mounted) return;
       setState(() {});
-      _showMessage('Like enregistre localement, synchronisation API indisponible pour le moment.');
+      _showMessage(
+        'Like enregistre localement, synchronisation API indisponible pour le moment.',
+      );
     }
+  }
+
+  Widget _buildMediaSection(Post post) {
+    final mediaList = _mediaCache.getMediaForPost(post.id);
+
+    if (mediaList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: mediaList.map((media) {
+        final isVideo = _isVideoUrl(media.url);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: isVideo
+              ? Container(
+                  height: 180,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[300],
+                  ),
+                  child: const Center(child: Icon(Icons.videocam, size: 40)),
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    media.url,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) {
+                      return Container(
+                        height: 180,
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Icon(Icons.broken_image, size: 40),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        );
+      }).toList(),
+    );
+  }
+
+  bool _isVideoUrl(String url) {
+    final normalizedPath =
+        Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return normalizedPath.endsWith('.mp4') ||
+        normalizedPath.endsWith('.mov') ||
+        normalizedPath.endsWith('.webm') ||
+        normalizedPath.endsWith('.m4v') ||
+        normalizedPath.endsWith('.avi') ||
+        normalizedPath.endsWith('.mkv');
   }
 
   Future<void> _openCommentDialog(Post post) async {
@@ -544,11 +724,20 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
             controller: controller,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Ecris ton commentaire...'),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'Ecris ton commentaire...',
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Publier')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Publier'),
+            ),
           ],
         );
       },
@@ -560,7 +749,11 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
       return;
     }
 
-    PostInteractionsMemory.addComment(postId: post.id, authorEmail: _userEmail, text: text.trim());
+    PostInteractionsMemory.addComment(
+      postId: post.id,
+      authorEmail: _userEmail,
+      text: text.trim(),
+    );
     if (!mounted) return;
     setState(() {});
   }
@@ -581,13 +774,28 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(post.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    Expanded(
+                      child: Text(
+                        post.title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
                   ],
                 ),
-                if ((post.content ?? '').trim().isNotEmpty) Text(post.content!.trim()),
+                if ((post.content ?? '').trim().isNotEmpty)
+                  Text(post.content!.trim()),
                 const SizedBox(height: 8),
-                Text('Publie le ${_formatDate(post.createdAt)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  'Publie le ${_formatDate(post.createdAt)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -596,7 +804,11 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                         Navigator.pop(context);
                         await _toggleLike(post);
                       },
-                      icon: Icon(_isPostLiked(post) ? Icons.favorite : Icons.favorite_border),
+                      icon: Icon(
+                        _isPostLiked(post)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                      ),
                       label: Text('Like (${_displayedLikes(post)})'),
                     ),
                     const SizedBox(width: 8),
@@ -611,7 +823,10 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text('Commentaires', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Commentaires',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 if (comments.isEmpty)
                   const Text('Aucun commentaire pour le moment.')
@@ -626,11 +841,22 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(comment.authorEmail, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(
+                              comment.authorEmail,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(comment.text),
                             const SizedBox(height: 2),
-                            Text(_formatDate(comment.createdAt), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text(
+                              _formatDate(comment.createdAt),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -648,6 +874,8 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
