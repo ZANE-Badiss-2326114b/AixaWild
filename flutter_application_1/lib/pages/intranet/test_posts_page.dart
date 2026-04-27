@@ -145,17 +145,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
               decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Contenu'),
             ),
             const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _isCreatingPost ? null : _pickImagesForCreatePost,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(_createPostImages.isEmpty ? 'Ajouter des images (optionnel)' : '${_createPostImages.length} image(s) sélectionnée(s)'),
-            ),
+            OutlinedButton.icon(onPressed: _isCreatingPost ? null : _pickImagesForCreatePost, icon: const Icon(Icons.photo_library_outlined), label: Text(_createPostImages.isEmpty ? 'Ajouter des images (optionnel)' : '${_createPostImages.length} image(s) sélectionnée(s)')),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _isCreatingPost ? null : _pickVideoForCreatePost,
-              icon: const Icon(Icons.videocam_outlined),
-              label: Text(_createPostVideo == null ? 'Ajouter une vidéo (max 21s)' : 'Vidéo sélectionnée (max 21s)'),
-            ),
+            OutlinedButton.icon(onPressed: _isCreatingPost ? null : _pickVideoForCreatePost, icon: const Icon(Icons.videocam_outlined), label: Text(_createPostVideo == null ? 'Ajouter une vidéo (max 21s)' : 'Vidéo sélectionnée (max 21s)')),
             if (_createPostImages.isNotEmpty) ...[
               const SizedBox(height: 8),
               SizedBox(
@@ -170,12 +162,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(image.path),
-                            height: 110,
-                            width: 110,
-                            fit: BoxFit.cover,
-                          ),
+                          child: Image.file(File(image.path), height: 110, width: 110, fit: BoxFit.cover),
                         ),
                         Positioned(
                           top: 4,
@@ -189,10 +176,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                                     });
                                   },
                             child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
                               padding: const EdgeInsets.all(4),
                               child: const Icon(Icons.close, size: 16, color: Colors.white),
                             ),
@@ -340,9 +324,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadImages(post.id),
-                              icon: _isUploadingByPost[post.id] == true
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.image),
+                              icon: _isUploadingByPost[post.id] == true ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.image),
                               label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter des images depuis la galerie'),
                             ),
                           ),
@@ -351,9 +333,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: _isUploadingByPost[post.id] == true ? null : () => _pickAndUploadVideo(post.id),
-                              icon: _isUploadingByPost[post.id] == true
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.videocam),
+                              icon: _isUploadingByPost[post.id] == true ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.videocam),
                               label: Text(_isUploadingByPost[post.id] == true ? 'Upload en cours...' : 'Ajouter une vidéo (max 21s)'),
                             ),
                           ),
@@ -487,10 +467,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) {
-                      return const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: Text('Impossible de charger l\'image.'),
-                      );
+                      return const Padding(padding: EdgeInsets.all(8), child: Text('Impossible de charger l\'image.'));
                     },
                   ),
                 ),
@@ -521,6 +498,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
           final selectedVideo = _createPostVideo;
           var uploadedCount = 0;
           var uploadFailed = false;
+          final uploadErrorMessages = <String>[];
 
           for (final selectedImage in selectedImages) {
             try {
@@ -530,8 +508,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
               } else {
                 uploadFailed = true;
               }
-            } catch (_) {
+            } catch (error) {
               uploadFailed = true;
+              uploadErrorMessages.add(error.toString());
             }
           }
 
@@ -543,8 +522,9 @@ class _TestPostsPageState extends State<TestPostsPage> {
               } else {
                 uploadFailed = true;
               }
-            } catch (_) {
+            } catch (error) {
               uploadFailed = true;
+              uploadErrorMessages.add(error.toString());
             }
           }
 
@@ -567,7 +547,8 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
           if (selectedImages.isNotEmpty || selectedVideo != null) {
             if (uploadFailed) {
-              _showMessage('Post créé, mais l\'upload de certains médias a échoué.');
+              final details = uploadErrorMessages.isNotEmpty ? ' (${uploadErrorMessages.first})' : '';
+              _showMessage('Post créé, mais l\'upload de certains médias a échoué$details');
             } else {
               _showMessage('Post et $uploadedCount média(s) créés avec succès.');
             }
@@ -603,10 +584,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
   }
 
   Future<void> _pickVideoForCreatePost() async {
-    final selectedVideo = await _imagePicker.pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: _maxVideoDuration,
-    );
+    final selectedVideo = await _imagePicker.pickVideo(source: ImageSource.gallery, maxDuration: _maxVideoDuration);
 
     if (selectedVideo == null) {
       return;
@@ -626,10 +604,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
   }
 
   Future<void> _pickAndUploadVideo(int postId) async {
-    final selectedVideo = await _imagePicker.pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: _maxVideoDuration,
-    );
+    final selectedVideo = await _imagePicker.pickVideo(source: ImageSource.gallery, maxDuration: _maxVideoDuration);
     if (selectedVideo == null) {
       return;
     }
@@ -683,21 +658,12 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
   Future<Media?> _uploadPickedFile({required int postId, required XFile file}) async {
     final mediaBytes = await file.readAsBytes();
-    return _mediaRepository.uploadMedia(
-      postId: postId,
-      mediaBytes: mediaBytes,
-      fileName: file.name,
-    );
+    return _mediaRepository.uploadMedia(postId: postId, mediaBytes: mediaBytes, fileName: file.name);
   }
 
   bool _isVideoUrl(String url) {
     final normalizedPath = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
-    return normalizedPath.endsWith('.mp4') ||
-        normalizedPath.endsWith('.mov') ||
-        normalizedPath.endsWith('.webm') ||
-        normalizedPath.endsWith('.m4v') ||
-        normalizedPath.endsWith('.avi') ||
-        normalizedPath.endsWith('.mkv');
+    return normalizedPath.endsWith('.mp4') || normalizedPath.endsWith('.mov') || normalizedPath.endsWith('.webm') || normalizedPath.endsWith('.m4v') || normalizedPath.endsWith('.avi') || normalizedPath.endsWith('.mkv');
   }
 
   Future<void> _loadMediaForPost(int postId) async {
@@ -756,10 +722,7 @@ class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
   @override
   Widget build(BuildContext context) {
     if (!_controller.value.isInitialized) {
-      return const SizedBox(
-        height: 180,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
     }
 
     return ClipRRect(
@@ -773,10 +736,7 @@ class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
             CircleAvatar(
               backgroundColor: Colors.black54,
               child: IconButton(
-                icon: Icon(
-                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
-                ),
+                icon: Icon(_controller.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
                 onPressed: () {
                   setState(() {
                     if (_controller.value.isPlaying) {
@@ -827,10 +787,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     if (!_controller.value.isInitialized) {
-      return const SizedBox(
-        height: 180,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
     }
 
     return ClipRRect(
@@ -844,10 +801,7 @@ class _NetworkVideoPlayerState extends State<_NetworkVideoPlayer> {
             CircleAvatar(
               backgroundColor: Colors.black54,
               child: IconButton(
-                icon: Icon(
-                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
-                ),
+                icon: Icon(_controller.value.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
                 onPressed: () {
                   setState(() {
                     if (_controller.value.isPlaying) {
