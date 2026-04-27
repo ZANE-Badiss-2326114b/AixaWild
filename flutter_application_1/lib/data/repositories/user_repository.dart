@@ -148,8 +148,21 @@ class UserRepository {
   }
 
   Future<void> logout() async {
-    await AuthTokenManager.instance.clearToken();
+    await AuthTokenManager.instance.clearOnLogout();
     // Optionnel : supprimer les données locales au logout
     // await _userDao.clearAll();
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty) {
+      throw Exception('Email manquant pour la réinitialisation.');
+    }
+
+    await _apiClient.post(
+      ApiEndpoints.authForgotPassword,
+      <String, String>{'email': normalizedEmail},
+      includeAuthorization: false,
+    );
   }
 }

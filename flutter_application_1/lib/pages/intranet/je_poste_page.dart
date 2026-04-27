@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/navigation/app_routes.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class JePosteIntranetPage extends StatelessWidget {
@@ -12,6 +13,7 @@ class JePosteIntranetPage extends StatelessWidget {
 
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Je poste'),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Je poste'),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(20),

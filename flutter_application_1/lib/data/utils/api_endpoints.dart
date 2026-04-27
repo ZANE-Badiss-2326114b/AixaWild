@@ -1,5 +1,6 @@
 class ApiEndpoints {
   static const String authLogin = '/auth/login';
+  static const String authForgotPassword = '/auth/forgot-password';
   static const String users = '/users';
   static const String posts = '/posts';
   static const String opinions = '/opinions';

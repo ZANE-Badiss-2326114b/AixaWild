@@ -7,7 +7,7 @@ typedef UnauthorizedHandler = Future<void> Function();
 typedef RefreshTokenHandler = Future<String?> Function(String refreshToken);
 
 class DioApiClient implements IApiClient {
-  DioApiClient({Dio? dio, AuthTokenManager? authTokenManager, this.onUnauthorized, this.onRefreshToken}) : _dio = dio ?? Dio(BaseOptions(baseUrl: _apiBaseUrl, connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(seconds: 30), sendTimeout: const Duration(seconds: 30), responseType: ResponseType.json, headers: const <String, dynamic>{'Accept': 'application/json', 'User-Agent': 'Flutter-Aixawild'})), _authTokenManager = authTokenManager ?? AuthTokenManager.instance {
+  DioApiClient({Dio? dio, AuthTokenManager? authTokenManager, this.onUnauthorized, this.onRefreshToken}) : _dio = dio ?? Dio(BaseOptions(baseUrl: _apiBaseUrl, connectTimeout: const Duration(seconds: 45), receiveTimeout: const Duration(seconds: 45), sendTimeout: const Duration(seconds: 45), responseType: ResponseType.json, headers: const <String, dynamic>{'Accept': 'application/json', 'User-Agent': 'Flutter-Aixawild'})), _authTokenManager = authTokenManager ?? AuthTokenManager.instance {
     _dio.interceptors.add(_AuthInterceptor(dio: _dio, authTokenManager: _authTokenManager, onUnauthorized: onUnauthorized, onRefreshToken: onRefreshToken));
   }
 
