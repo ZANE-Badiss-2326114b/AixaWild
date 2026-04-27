@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../data/api/api_client.dart';
 import '../../data/repositories/post_repository.dart';
 import '../../shared/navigation/app_routes.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class FormulaireIntranetPage extends StatefulWidget {
@@ -184,6 +185,7 @@ class _FormulaireIntranetPageState extends State<FormulaireIntranetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Recensement'),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Je poste'),
       body: _buildBody(),
     );
   }

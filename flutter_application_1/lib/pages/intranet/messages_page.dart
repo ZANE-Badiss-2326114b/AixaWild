@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class MessagesIntranetPage extends StatelessWidget {
@@ -9,6 +10,7 @@ class MessagesIntranetPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Messages'),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Messages'),
       body: ListView.separated(
         padding: const EdgeInsets.all(12),
         itemCount: 4,

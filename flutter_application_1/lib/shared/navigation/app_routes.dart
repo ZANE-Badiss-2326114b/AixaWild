@@ -5,6 +5,8 @@ class AppRoutes {
   static const intranetAccueil = '/intranet/accueil';
   static const intranetTestPosts = '/intranet/test-posts';
   static const intranetMesFiches = '/intranet/mes-fiches';
+  static const intranetRecents = '/intranet/recents';
+  static const intranetEspeces = '/intranet/especes';
   static const intranetMessages = '/intranet/messages';
   static const intranetJePoste = '/intranet/je-poste';
   static const intranetCarte = '/intranet/carte';

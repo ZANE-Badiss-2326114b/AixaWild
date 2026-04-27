@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../data/api/core/dio_client.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class CarteIntranetPage extends StatefulWidget {
@@ -56,6 +57,7 @@ class _CarteIntranetPageState extends State<CarteIntranetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild - Carte'),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Carte'),
       body: RefreshIndicator(
         onRefresh: _refreshPosts,
         child: FutureBuilder<List<_MappedPost>>(

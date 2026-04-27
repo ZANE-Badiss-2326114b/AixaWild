@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/navigation/app_routes.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 
 class ExplicationIntranetPage extends StatelessWidget {
   const ExplicationIntranetPage({super.key});
@@ -10,7 +11,7 @@ class ExplicationIntranetPage extends StatelessWidget {
     return Scaffold(
       appBar: _buildTopBar(),
       body: const _ExplicationBody(),
-      bottomNavigationBar: _buildBottomNavigation(context),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Explication'),
     );
   }
 
@@ -32,53 +33,6 @@ class ExplicationIntranetPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildTab(context, 'Récentes', AppRoutes.intranetMesFiches),
-            _buildTab(context, 'Espèces', AppRoutes.intranetMesFiches),
-            _buildTab(context, 'Messages', AppRoutes.intranetMessages),
-            _buildTab(context, 'Je poste', AppRoutes.intranetJePoste),
-            _buildTab(context, 'Carte', AppRoutes.intranetCarte),
-            _buildTab(context, 'Explication', AppRoutes.intranetExplication, selected: true),
-            _buildTab(context, 'Contributeur', null),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTab(
-    BuildContext context,
-    String label,
-    String? targetRoute, {
-    bool selected = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: ChoiceChip(
-        selected: selected,
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        onSelected: (_) {
-          if (targetRoute == null || selected) {
-            return;
-          }
-          Navigator.pushReplacementNamed(context, targetRoute);
-        },
-        selectedColor: Colors.blue[700],
-        backgroundColor: Colors.blue[100],
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : Colors.blue[900],
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 }
 
 class _ExplicationBody extends StatelessWidget {

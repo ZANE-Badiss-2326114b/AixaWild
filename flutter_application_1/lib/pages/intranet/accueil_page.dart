@@ -6,6 +6,7 @@ import '../../data/models/post.dart';
 import '../../data/repositories/post_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../shared/navigation/app_routes.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class AccueilIntranetPage extends StatefulWidget {
@@ -61,6 +62,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
     return Scaffold(
       appBar: intranetAppBar(title: 'AixaWild'),
       body: _buildBody(context),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Accueil'),
       floatingActionButton: _buildFloatingActionButton(context),
     );
   }
@@ -244,7 +246,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
               // Bouton Mes fiches
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.intranetMesFiches, arguments: _userEmail),
                   child: _buildQuickAction(Icons.list, 'Mes fiches', Colors.orange),
                 ),
               ),

@@ -9,6 +9,7 @@ import '../../data/models/media.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../widgets/intranet_bottom_navigation.dart';
 import '../../widgets/intranet_appbar.dart';
 
 class TestPostsPage extends StatefulWidget {
@@ -73,6 +74,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: intranetAppBar(title: 'Exemple API - Posts'),
+      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Accueil'),
       body: RefreshIndicator(
         onRefresh: _loadPosts,
         child: ListView(padding: const EdgeInsets.all(16), children: [_buildCurrentUserCard(), const SizedBox(height: 12), _buildCreatePostCard(), const SizedBox(height: 12), _buildPostsHeader(), const SizedBox(height: 8), _buildPostsList()]),
