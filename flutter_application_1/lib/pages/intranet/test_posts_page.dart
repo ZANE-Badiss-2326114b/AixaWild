@@ -5,12 +5,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/api/auth/auth_token_manager.dart';
+import '../../data/api/auth/session_service.dart';
 import '../../data/api/core/dio_client.dart';
 import '../../data/models/media.dart';
 import '../../data/models/post.dart';
+import '../../data/models/user_identity.dart';
 import '../../data/repositories/media_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_appbar.dart';
+import '../../widgets/intranet_navigation_drawer.dart';
 
 class TestPostsPage extends StatefulWidget {
   const TestPostsPage({super.key});
@@ -22,6 +26,7 @@ class TestPostsPage extends StatefulWidget {
 class _TestPostsPageState extends State<TestPostsPage> {
   late final PostRepository _postRepository;
   late final MediaRepository _mediaRepository;
+  late final SessionService _sessionService;
   final ImagePicker _imagePicker = ImagePicker();
   List<_SelectedMediaFile> _createPostImages = <_SelectedMediaFile>[];
   _SelectedMediaFile? _createPostVideo;
@@ -43,9 +48,14 @@ class _TestPostsPageState extends State<TestPostsPage> {
   @override
   void initState() {
     super.initState();
-    final apiClient = DioApiClient();
+    final apiClient = DioApiClient(
+      onForbidden: (message) async {
+        _showMessage(message);
+      },
+    );
     _postRepository = PostRepository(apiClient);
     _mediaRepository = MediaRepository(apiClient);
+    _sessionService = SessionService();
   }
 
   Map<String, String> _mediaRequestHeaders() {
@@ -81,12 +91,27 @@ class _TestPostsPageState extends State<TestPostsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: intranetAppBar(title: 'Exemple API - Posts'),
-      body: RefreshIndicator(
-        onRefresh: _loadPosts,
-        child: ListView(padding: const EdgeInsets.all(16), children: [_buildCurrentUserCard(), const SizedBox(height: 12), _buildCreatePostCard(), const SizedBox(height: 12), _buildPostsHeader(), const SizedBox(height: 8), _buildPostsList()]),
-      ),
+    return FutureBuilder<UserIdentity?>(
+      future: _sessionService.currentUser(),
+      builder: (context, snapshot) {
+        final identity = snapshot.data;
+        final isAdmin = identity?.isAdmin ?? false;
+
+        return Scaffold(
+          appBar: intranetAppBar(title: 'Exemple API - Posts'),
+          drawer: IntranetNavigationDrawer(
+            currentEmail: _currentEmail,
+            isAdmin: isAdmin,
+            onOpenAdministration: () {
+              Navigator.pushNamed(context, AppRoutes.adminDashboard, arguments: _currentEmail);
+            },
+          ),
+          body: RefreshIndicator(
+            onRefresh: _loadPosts,
+            child: ListView(padding: const EdgeInsets.all(16), children: [_buildCurrentUserCard(), const SizedBox(height: 12), _buildCreatePostCard(), const SizedBox(height: 12), _buildPostsHeader(), const SizedBox(height: 8), _buildPostsList(isAdmin)]),
+          ),
+        );
+      },
     );
   }
 
@@ -253,7 +278,7 @@ class _TestPostsPageState extends State<TestPostsPage> {
     );
   }
 
-  Widget _buildPostsList() {
+  Widget _buildPostsList(bool isAdmin) {
     Widget result;
 
     if (_isLoadingPosts) {
@@ -288,6 +313,37 @@ class _TestPostsPageState extends State<TestPostsPage> {
                     const SizedBox(height: 8),
                     _buildMediaSection(post),
                     const SizedBox(height: 8),
+                    if (isAdmin)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Wrap(
+                          spacing: 4,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              tooltip: 'Supprimer',
+                              onPressed: () {
+                                _showMessage('Accès admin: supprimer le post ${post.id}');
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              tooltip: 'Éditer',
+                              onPressed: () {
+                                _showMessage('Accès admin: éditer le post ${post.id}');
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.admin_panel_settings),
+                              tooltip: 'Accès Admin',
+                              onPressed: () {
+                                _showMessage('Accès admin autorisé.');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (isAdmin) const SizedBox(height: 8),
                     if (isOwnPost)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,

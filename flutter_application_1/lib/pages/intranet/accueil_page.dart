@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../data/api/auth/session_service.dart';
 import '../../data/api/core/dio_client.dart';
 import '../../data/database/my_database.dart';
+import '../../data/models/user_identity.dart';
 import '../../data/models/post.dart';
 import '../../data/repositories/post_repository.dart';
 import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_appbar.dart';
+import '../../widgets/intranet_navigation_drawer.dart';
 
 class AccueilIntranetPage extends StatefulWidget {
   const AccueilIntranetPage({super.key});
@@ -17,6 +20,7 @@ class AccueilIntranetPage extends StatefulWidget {
 class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   final MyDatabase _database = MyDatabase();
   late final PostRepository _postRepository;
+  late final SessionService _sessionService;
   late Future<User?> _userFuture;
   late Future<List<Post>> _postsFuture;
   String _userEmail = '';
@@ -26,6 +30,7 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
   void initState() {
     super.initState();
     _postRepository = PostRepository(DioApiClient());
+    _sessionService = SessionService();
   }
 
   @override
@@ -54,10 +59,25 @@ class _AccueilIntranetPageState extends State<AccueilIntranetPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: intranetAppBar(title: 'AixaWild'),
-      body: _buildBody(context),
-      floatingActionButton: _buildFloatingActionButton(context),
+    return FutureBuilder<UserIdentity?>(
+      future: _sessionService.currentUser(),
+      builder: (context, snapshot) {
+        final identity = snapshot.data;
+        final isAdmin = identity?.isAdmin ?? false;
+
+        return Scaffold(
+          appBar: intranetAppBar(title: 'AixaWild'),
+          drawer: IntranetNavigationDrawer(
+            currentEmail: _userEmail,
+            isAdmin: isAdmin,
+            onOpenAdministration: () {
+              Navigator.pushNamed(context, AppRoutes.adminDashboard, arguments: _userEmail);
+            },
+          ),
+          body: _buildBody(context),
+          floatingActionButton: _buildFloatingActionButton(context),
+        );
+      },
     );
   }
 

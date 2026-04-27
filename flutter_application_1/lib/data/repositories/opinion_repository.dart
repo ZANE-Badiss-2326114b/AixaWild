@@ -7,6 +7,16 @@ class OpinionRepository {
 
   OpinionRepository(this._apiClient);
 
+  Future<List<Opinion>> getAllOpinions() async {
+    final response = await _apiClient.get(ApiEndpoints.opinions);
+
+    if (response is List) {
+      return response.whereType<Map<String, dynamic>>().map(Opinion.fromJson).toList();
+    }
+
+    return <Opinion>[];
+  }
+
   Future<Opinion?> upsertOpinion({
     required int postId,
     required String userEmail,
