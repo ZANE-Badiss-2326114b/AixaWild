@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../data/api/core/dio_client.dart';
 import '../../data/models/post.dart';
+import '../../data/repositories/opinion_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/utils/post_interactions_memory.dart';
 import '../../widgets/intranet_appbar.dart';
 import '../../widgets/intranet_bottom_navigation.dart';
 
@@ -15,14 +17,32 @@ class EspecesIntranetPage extends StatefulWidget {
 
 class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
   late final PostRepository _postRepository;
+  late final OpinionRepository _opinionRepository;
   late Future<List<Post>> _postsFuture;
+  String _userEmail = '';
+  bool _isInitialized = false;
   String? _selectedSpecies;
 
   @override
   void initState() {
     super.initState();
-    _postRepository = PostRepository(DioApiClient());
+    final apiClient = DioApiClient();
+    _postRepository = PostRepository(apiClient);
+    _opinionRepository = OpinionRepository(apiClient);
     _postsFuture = _loadPosts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInitialized) return;
+
+    final routeArgument = ModalRoute.of(context)?.settings.arguments;
+    if (routeArgument is String && routeArgument.trim().isNotEmpty) {
+      _userEmail = routeArgument.trim();
+    }
+
+    _isInitialized = true;
   }
 
   @override
@@ -180,39 +200,64 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
                   ...selectedPosts.map((post) => Card(
                         elevation: 1,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      post.title,
-                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _openPostDetails(post),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        post.title,
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                      ),
                                     ),
-                                  ),
-                                  Text('#${post.id}', style: const TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              if ((post.content ?? '').trim().isNotEmpty) Text(post.content!.trim()),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Text(
-                                    _formatDate(post.createdAt),
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    post.authorEmail,
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    Text('#${post.id}', style: const TextStyle(color: Colors.grey)),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                if ((post.content ?? '').trim().isNotEmpty) Text(post.content!.trim()),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Text(
+                                      _formatDate(post.createdAt),
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      post.authorEmail,
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Like',
+                                      onPressed: () => _toggleLike(post),
+                                      icon: Icon(
+                                        _isPostLiked(post) ? Icons.favorite : Icons.favorite_border,
+                                        color: _isPostLiked(post) ? Colors.red : Colors.grey,
+                                      ),
+                                    ),
+                                    Text('${_displayedLikes(post)}'),
+                                    const SizedBox(width: 16),
+                                    IconButton(
+                                      tooltip: 'Commenter',
+                                      onPressed: () => _openCommentDialog(post),
+                                      icon: const Icon(Icons.mode_comment_outlined),
+                                    ),
+                                    Text('${PostInteractionsMemory.commentsForPost(post.id).length}'),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       )),
@@ -276,5 +321,159 @@ class _EspecesIntranetPageState extends State<EspecesIntranetPage> {
     }
 
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  bool _isPostLiked(Post post) {
+    return PostInteractionsMemory.isLikedByUser(postId: post.id, userEmail: _userEmail);
+  }
+
+  int _displayedLikes(Post post) {
+    return post.likesCount + PostInteractionsMemory.likesDeltaForPost(post.id);
+  }
+
+  Future<void> _toggleLike(Post post) async {
+    if (_userEmail.trim().isEmpty) {
+      _showMessage('Email utilisateur manquant.');
+      return;
+    }
+
+    final currentlyLiked = _isPostLiked(post);
+
+    try {
+      if (currentlyLiked) {
+        await _opinionRepository.removeLike(postId: post.id, userEmail: _userEmail);
+      } else {
+        await _opinionRepository.addLike(postId: post.id, userEmail: _userEmail);
+      }
+
+      PostInteractionsMemory.setLikedByUser(postId: post.id, userEmail: _userEmail, liked: !currentlyLiked);
+      if (!mounted) return;
+      setState(() {});
+    } catch (_) {
+      // Keep interaction responsive even when API sync fails.
+      PostInteractionsMemory.setLikedByUser(postId: post.id, userEmail: _userEmail, liked: !currentlyLiked);
+      if (!mounted) return;
+      setState(() {});
+      _showMessage('Like enregistre localement, synchronisation API indisponible pour le moment.');
+    }
+  }
+
+  Future<void> _openCommentDialog(Post post) async {
+    final controller = TextEditingController();
+
+    final text = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Ajouter un commentaire'),
+          content: TextField(
+            controller: controller,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Ecris ton commentaire...'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Publier')),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (text == null || text.trim().isEmpty) {
+      return;
+    }
+
+    PostInteractionsMemory.addComment(postId: post.id, authorEmail: _userEmail, text: text.trim());
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _openPostDetails(Post post) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final comments = PostInteractionsMemory.commentsForPost(post.id);
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(post.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                if ((post.content ?? '').trim().isNotEmpty) Text(post.content!.trim()),
+                const SizedBox(height: 8),
+                Text('Publie le ${_formatDate(post.createdAt)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _toggleLike(post);
+                      },
+                      icon: Icon(_isPostLiked(post) ? Icons.favorite : Icons.favorite_border),
+                      label: Text('Like (${_displayedLikes(post)})'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _openCommentDialog(post);
+                      },
+                      icon: const Icon(Icons.mode_comment_outlined),
+                      label: Text('Commenter (${comments.length})'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('Commentaires', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                if (comments.isEmpty)
+                  const Text('Aucun commentaire pour le moment.')
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: comments.length,
+                      separatorBuilder: (_, _) => const Divider(height: 12),
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(comment.authorEmail, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text(comment.text),
+                            const SizedBox(height: 2),
+                            Text(_formatDate(comment.createdAt), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
