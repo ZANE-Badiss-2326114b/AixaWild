@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/navigation/app_routes.dart';
 import '../../widgets/intranet_bottom_navigation.dart';
 
 class ExplicationIntranetPage extends StatelessWidget {
@@ -11,7 +10,10 @@ class ExplicationIntranetPage extends StatelessWidget {
     return Scaffold(
       appBar: _buildTopBar(),
       body: const _ExplicationBody(),
-      bottomNavigationBar: intranetBottomNavigationBar(context, selectedTab: 'Explication'),
+      bottomNavigationBar: intranetBottomNavigationBar(
+        context,
+        selectedTab: 'Explication',
+      ),
     );
   }
 
@@ -19,7 +21,10 @@ class ExplicationIntranetPage extends StatelessWidget {
     return AppBar(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
-      title: const Text('AixaWild', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28)),
+      title: const Text(
+        'AixaWild',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
+      ),
       actions: const [
         Icon(Icons.search, size: 30),
         SizedBox(width: 10),
@@ -32,7 +37,6 @@ class ExplicationIntranetPage extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _ExplicationBody extends StatelessWidget {
@@ -67,7 +71,11 @@ class _ExplicationBody extends StatelessWidget {
             Text(
               'Regardez, uploadez, classez, partagez, analysez et consultez facilement les observations, enrichies de données contextuelles.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, height: 1.45, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             SizedBox(height: 22),
             Text(
@@ -106,7 +114,11 @@ class _BadgeIcon extends StatelessWidget {
             ),
             child: Text(
               badge,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
